@@ -27,7 +27,11 @@ jobs:
       - run: npm test
       - run: npm run build
       - name: Add SPA fallback
-        run: cp dist/index.html dist/404.html && touch dist/.nojekyll
+        run: |
+          cp dist/index.html dist/404.html
+          mkdir -p dist/privacy
+          cp dist/index.html dist/privacy/index.html
+          touch dist/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
