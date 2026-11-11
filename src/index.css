@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --garage-bg: #121212;
+  --garage-card: #1e1e1e;
+  --garage-orange: #ff6b00;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  background: #121212;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.input {
+  @apply min-h-12 w-full rounded-xl border border-white/15 bg-[#121212] px-3 text-sm text-white;
+}
+
+@keyframes spin-cw {
+  0% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(28deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes spin-ccw {
+  0% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-28deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+
+.spin-cw {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spin-cw 1.4s ease-in-out infinite;
+}
+
+.spin-ccw {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spin-ccw 1.4s ease-in-out infinite;
+}
+
+.pulse-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulse-ring 1.4s ease-out infinite;
+}
+
+@media print {
+  nav,
+  header button,
+  .no-print {
+    display: none !important;
+  }
+}
+
+.chip-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
