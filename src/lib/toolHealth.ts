@@ -10,7 +10,7 @@ import type { MissPattern } from "./missDetect";
 export const HEALTH_CHANGED_EVENT = "crankit-health-changed";
 
 export const HEALTH_FORMULA =
-  "Health Score is a weighted average, shown to one decimal place. Idle closeness 25%, idle stability 20%, WOT vs target 25%, miss rate 20%, and rev-up time 10%. Missing pieces are dropped and the rest are re-weighted. For a stock machine, idle and WOT targets come from the official model spec when we have one, otherwise from the first health check (the baseline). If you swap in a known engine from the official list, we judge that engine against ITS stock specs — a stock engine that is running correctly should match its own manual, regardless of the machine it is in. Own-baseline drift (stability, WOT vs your first confirmed reading, miss rate, and rev-up) is used only when the installed engine is unknown or you mark it Modified (cam, carb, porting, etc.). A 1% RPM change or a very small miss rate only moves the score by a few tenths of a point, so a healthy tool can read 99.6% on day one and 99.2% months later.";
+  "Health Score is a weighted average, shown as a whole-number percent — phone-mic precision does not justify decimals. Idle closeness 25%, idle stability 20%, WOT vs target 25%, miss rate 20%, and rev-up time 10%. Missing pieces are dropped and the rest are re-weighted. For a stock machine, idle and WOT targets come from the official model spec when we have one, otherwise from the first health check (the baseline). If you swap in a known engine from the official list, we judge that engine against ITS stock specs — a stock engine that is running correctly should match its own manual, regardless of the machine it is in. Own-baseline drift (stability, WOT vs your first confirmed reading, miss rate, and rev-up) is used only when the installed engine is unknown or you mark it Modified (cam, carb, porting, etc.). A small RPM change or miss rate barely moves the internal score, so a healthy tool can still read 99% from day one through later checks.";
 
 export type HealthCheck = {
   id: string;
@@ -170,7 +170,8 @@ export function clampScore(n: number): number {
 }
 
 export function formatHealthScore(score: number): string {
-  return `${clampScore(score).toFixed(1)}%`;
+  const n = Math.round(Math.min(100, Math.max(0, score)));
+  return `${n}%`;
 }
 
 /** Format a timestamp as M/D/YY in the user's local zone. */

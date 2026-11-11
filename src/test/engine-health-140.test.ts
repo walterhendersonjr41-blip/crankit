@@ -159,7 +159,7 @@ describe("wrong-engine sanity check", () => {
 });
 
 describe("Tool History health score and custom / engine-swap", () => {
-  it("shows one decimal and barely moves on a 1% drift", () => {
+  it("shows a whole-number percent and barely moves on a 1% drift", () => {
     const gx = findSpec("GX160")!;
     const first = computeHealthScore({
       idleRpm: 1400,
@@ -168,7 +168,9 @@ describe("Tool History health score and custom / engine-swap", () => {
       missRate: 0.005,
       spec: gx,
     });
-    expect(formatHealthScore(first)).toMatch(/^\d+\.\d%$/);
+    expect(formatHealthScore(first)).toMatch(/^\d+%$/);
+    expect(formatHealthScore(99.6)).toBe("100%");
+    expect(formatHealthScore(99.2)).toBe("99%");
     expect(first).toBeGreaterThan(99);
     const later = computeHealthScore({
       idleRpm: 1414,
@@ -180,7 +182,8 @@ describe("Tool History health score and custom / engine-swap", () => {
     expect(first - later).toBeLessThan(1.5);
     expect(later).toBeGreaterThan(98);
     expect(formatHealthDate("2026-12-23T15:00:00-05:00")).toMatch(/12\/23\/26/);
-    expect(HEALTH_FORMULA).toMatch(/one decimal/i);
+    expect(HEALTH_FORMULA).toMatch(/whole-number percent/i);
+    expect(HEALTH_FORMULA).not.toMatch(/one decimal/i);
     expect(HEALTH_FORMULA).toMatch(/Modified/);
   });
 

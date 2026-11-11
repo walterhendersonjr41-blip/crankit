@@ -45,6 +45,7 @@ import {
   recordMismatchConfirm,
   markToolCustom,
   useHealthRecord,
+  formatHealthScore,
 } from "../lib/toolHealth";
 import { EngineShortlist, ModelSpecPicker } from "./ModelSpecPicker";
 
@@ -545,7 +546,7 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
       spec: judgeSpec,
       confirmedMismatch: mismatchOk,
     });
-    setHealthNote(saved ? (saved.isBaseline ? "Baseline health check saved on this device." : `Health check saved · ${saved.score.toFixed(1)}%.`) : "Health check was not saved.");
+    setHealthNote(saved ? (saved.isBaseline ? "Baseline health check saved on this device." : `Health check saved · ${formatHealthScore(saved.score)}.`) : "Health check was not saved.");
   }
 
   const rpmLabel = displayRpm != null && (simulate || clear || phase === "result") ? Math.round(displayRpm) : null;

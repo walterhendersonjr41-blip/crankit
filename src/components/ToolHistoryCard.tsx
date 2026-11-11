@@ -203,10 +203,10 @@ function HealthChart({ checks }: { checks: { at: string; score: number }[] }) {
         <circle key={c.at + i} cx={x(i)} cy={y(c.score)} r="3.5" fill="#FF6B00" />
       ))}
       <text x={pad} y={12} fill="#888" fontSize="9">
-        {max.toFixed(0)}%
+        {Math.round(max)}%
       </text>
       <text x={pad} y={h - 4} fill="#888" fontSize="9">
-        {min.toFixed(1)}%
+        {Math.round(min)}%
       </text>
     </svg>
   );
