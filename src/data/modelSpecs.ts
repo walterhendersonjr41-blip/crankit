@@ -5,7 +5,9 @@
  */
 export type ModelSpec = {
   id: string;
-  brand: "stihl" | "husqvarna" | "echo" | "poulan" | "craftsman" | "ryobi" | "homelite";
+  brand: "stihl" | "husqvarna" | "echo" | "poulan" | "craftsman" | "ryobi" | "homelite" | "honda" | "briggs" | "kohler" | "predator";
+  /** Omitted means 2-stroke (the default for saws and trimmers). */
+  engineCycle?: "2-stroke" | "4-stroke";
   name: string;
   aliases: string[];
   idleRpm?: number;
@@ -275,6 +277,146 @@ const SPECS: ModelSpec[] = [
       url: "https://www-static-nw.husqvarna.com/hbd/tdrdownload/v2/pub000093847/doc000246944/OM/qQO2VWZHUMLwXX0oJ06ALf_iEjQ?httproute=True",
     },
   },
+
+  // --- 4-stroke utility engines (official idle / governed no-load only) ---
+  {
+    id: "honda-gx160",
+    brand: "honda",
+    name: "Honda GX160",
+    aliases: ["gx160", "gx-160", "honda gx160"],
+    engineCycle: "4-stroke",
+    idleRpm: 1400,
+    idleRpmMin: 1250,
+    idleRpmMax: 1600,
+    maxRpmMin: 3750,
+    maxRpmMax: 4050,
+    note: "Official owner’s manual idle is 1,400 RPM (tune-up +200/−150). Official Honda adjustment information lists maximum engine speed 3,900 ± 150 RPM (DS type 3,750 ± 150). Equipment may specify a lower governed speed.",
+    source: {
+      title: "Honda GX160/GX200 official owner’s manual (idle 1,400 RPM) and official GX120/160/200 engine adjustment information (max 3,900 ± 150 RPM)",
+      url: "https://cdn.powerequipment.honda.com/engines/pdf/manuals/00X37ZEE6000.pdf",
+    },
+  },
+  {
+    id: "honda-gx200",
+    brand: "honda",
+    name: "Honda GX200",
+    aliases: ["gx200", "gx-200", "honda gx200"],
+    engineCycle: "4-stroke",
+    idleRpm: 1400,
+    idleRpmMin: 1250,
+    idleRpmMax: 1600,
+    maxRpmMin: 3750,
+    maxRpmMax: 4050,
+    note: "Same official idle and maximum-speed figures as the GX160 (DS type 3,750 ± 150 RPM).",
+    source: {
+      title: "Honda GX160/GX200 official owner’s manual (idle 1,400 RPM) and official GX120/160/200 engine adjustment information (max 3,900 ± 150 RPM)",
+      url: "https://cdn.powerequipment.honda.com/engines/pdf/manuals/00X37ZEE6000.pdf",
+    },
+  },
+  {
+    id: "honda-gcv160",
+    brand: "honda",
+    name: "Honda GCV160",
+    aliases: ["gcv160", "gcv-160", "honda gcv160"],
+    engineCycle: "4-stroke",
+    idleRpm: 1400,
+    idleRpmMin: 1250,
+    idleRpmMax: 1550,
+    note: "Official tune-up idle is 1,400 ± 150 RPM. Fixed-throttle types list 1,700 ± 150, and auto-throttle types 2,500 ± 150. No official governed / no-load top speed is named (power-at-3,600 is not used).",
+    source: {
+      title: "Honda GCV160/GCV190 official owner’s manual (idle 1,400 ± 150 RPM; variants noted)",
+      url: "https://cdn.powerequipment.honda.com/engines/pdf/manuals/00X31Z8B0430.pdf",
+    },
+  },
+  {
+    id: "honda-gcv190",
+    brand: "honda",
+    name: "Honda GCV190",
+    aliases: ["gcv190", "gcv-190", "honda gcv190"],
+    engineCycle: "4-stroke",
+    idleRpm: 1400,
+    idleRpmMin: 1250,
+    idleRpmMax: 1550,
+    note: "Same official GCV160/GCV190 tune-up table: idle 1,400 ± 150 RPM, with fixed-throttle 1,700 ± 150 and auto-throttle 2,500 ± 150 variants. Governed top speed is omitted.",
+    source: {
+      title: "Honda GCV160/GCV190 official owner’s manual (idle 1,400 ± 150 RPM; variants noted)",
+      url: "https://cdn.powerequipment.honda.com/engines/pdf/manuals/00X31Z8B0430.pdf",
+    },
+  },
+  {
+    id: "honda-gcv170",
+    brand: "honda",
+    name: "Honda GCV170",
+    aliases: ["gcv170", "gcv-170", "honda gcv170"],
+    engineCycle: "4-stroke",
+    idleRpm: 1700,
+    idleRpmMin: 1550,
+    idleRpmMax: 1850,
+    note: "Official tune-up idle is 1,700 ± 150 RPM. Net power at 3,600 RPM is a rated-power figure, not a governed no-load maximum, so WOT is omitted.",
+    source: {
+      title: "Honda GCV170/GCV200 official owner’s manual (idle 1,700 ± 150 RPM)",
+      url: "https://cdn.powerequipment.honda.com/engines/pdf/manuals/00X37Z9V0001.pdf",
+    },
+  },
+  {
+    id: "predator-212",
+    brand: "predator",
+    name: "Predator 212",
+    aliases: ["predator 212", "predator212", "hf 212", "harbor freight 212"],
+    engineCycle: "4-stroke",
+    idleRpm: 1800,
+    idleRpmMin: 1650,
+    idleRpmMax: 1950,
+    note: "Official Harbor Freight owner’s manual lists idle 1,800 ± 150 RPM. No official governed / no-load top speed is named in that specifications table, so WOT is omitted.",
+    source: {
+      title: "Harbor Freight Predator 212 official owner’s manual (idle 1,800 ± 150 RPM)",
+      url: "https://manuals.harborfreight.com/manuals/60000-60999/60363-792363603638.pdf",
+    },
+  },
+  {
+    id: "briggs-220700-252700",
+    brand: "briggs",
+    name: "Briggs & Stratton 220700 / 252700 series",
+    aliases: ["220700", "252700", "briggs 220700", "briggs 252700", "briggs & stratton 220700"],
+    engineCycle: "4-stroke",
+    idleRpm: 1750,
+    note: "Official operating and maintenance instructions set idle at 1,750 RPM. The acceptable operating range is 1,800–3,600 RPM, but top governed no-load speed is specified by the equipment manufacturer, so WOT is omitted.",
+    source: {
+      title: "Briggs & Stratton official operating and maintenance instructions, models 220700–220799 and 252700–252799 (idle 1,750 RPM)",
+      url: "https://www.briggsandstratton.com/hubfs/briggsandstratton/FAQs/pdfs/270862_4-80-domestic.pdf",
+    },
+  },
+  {
+    id: "kohler-courage-sv",
+    brand: "kohler",
+    name: "Kohler Courage SV470–SV620",
+    aliases: ["courage sv470", "courage sv480", "courage sv530", "courage sv540", "courage sv590", "courage sv600", "courage sv620", "kohler courage", "sv470", "sv620"],
+    engineCycle: "4-stroke",
+    idleRpm: 1200,
+    idleRpmMin: 1125,
+    idleRpmMax: 1275,
+    maxRpm: 3300,
+    note: "Official Courage service manual: low idle for basic engines is 1,200 RPM (± 75); actual idle may follow the equipment maker. Recommended maximum no-load high speed for most engines is 3,300 RPM; actual high speed depends on the application.",
+    source: {
+      title: "Kohler Courage SV470–SV620 official service manual 20 690 01 (idle 1,200 ± 75; recommended max no-load 3,300 RPM)",
+      url: "https://resources.kohler.com/power/kohler/enginesUS/pdf/20_690_01_EN.pdf",
+    },
+  },
+  {
+    id: "kohler-xt",
+    brand: "kohler",
+    name: "Kohler XT-6 / XT-7",
+    aliases: ["xt-6", "xt6", "xtr-6", "xt-7", "xt7", "xtr-7", "xt650", "xt675", "xt775", "xt8", "kohler xt"],
+    engineCycle: "4-stroke",
+    idleRpm: 1800,
+    idleRpmMin: 1725,
+    idleRpmMax: 1875,
+    note: "Official XT service manual: low idle for basic engines is 1,800 RPM (± 75); actual idle may follow the equipment maker. No official governed no-load top speed is named, so WOT is omitted.",
+    source: {
+      title: "Kohler XT-6, XT-7 (and related XT models) official service manual 14 690 01 (idle 1,800 ± 75 RPM)",
+      url: "https://resources.kohler.com/power/kohler/enginesUS/pdf/14_690_01_EN.pdf",
+    },
+  },
 ];
 
 export const MODEL_SPECS: readonly ModelSpec[] = SPECS;
@@ -296,6 +438,11 @@ export function findModelSpec(...parts: Array<string | undefined | null>): Model
     if (hay === key || hay.includes(key)) return spec;
   }
   return undefined;
+}
+
+export function findModelSpecById(id?: string | null): ModelSpec | undefined {
+  if (!id) return undefined;
+  return MODEL_SPECS.find((s) => s.id === id);
 }
 
 export function hasOfficialIdle(spec?: ModelSpec): boolean {

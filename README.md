@@ -1,6 +1,6 @@
 # CrankIt: Real 2-Stroke Mechanic
 
-A mobile-first PWA that walks homeowners, tree workers, and landscapers through cheap driveway fixes for 2-stroke chainsaws, weed eaters, leaf blowers, and hedge trimmers — and tells them honestly when the engine core is dead.
+A mobile-first PWA that walks homeowners, tree workers, and landscapers through cheap driveway fixes for 2-stroke chainsaws, weed eaters, leaf blowers, and hedge trimmers — plus verified 4-stroke mower, generator, and pressure-washer engines — and tells them honestly when the engine core is dead.
 
 Nothing in this app needs a login or a server. Garage tools, fuel batches, and diagnostic history are stored in the browser (`localStorage`).
 
@@ -9,7 +9,8 @@ Nothing in this app needs a login or a server. Garage tools, fuel batches, and d
 - **Diagnose** — all 6 decision trees, every step with cost, time, a color badge, **FIXED IT! (Save to Garage Log)** and **STILL BROKEN → next check**. Tree 4 branches on the wet test and on the compression/scoring check.
 - **Carb & Tune** — interactive SVG of L / H / T-LA screws that animates direction and turn fraction for each symptom, plus a screw-head identifier (flathead, Double-D, Pac-Man, splined 21-tooth).
 - **Fuel Mix** — 50:1, 40:1, and 32:1 calculator in fl oz, mL, and tablespoons, with custom can size and a 30/90-day batch freshness tracker.
-- **My Garage** — fleet tracker with an optional sample fleet (2 chainsaws + 4 weed eaters).
+- **My Garage** — fleet tracker with an optional sample fleet (2 chainsaws + 4 weed eaters), official model picks (including verified 4-stroke engines), and per-tool **Tool History** (Health Score, timeline, printable report).
+- **Acoustic tuner** — on-device RPM, Miss Detector, Auto-detect engine (you tap to pick; it never auto-assigns), and a wrong-engine sanity check. Audio is never recorded or uploaded.
 - **Shop Meter** — four-question evaluator with green / amber / red banners.
 
 Accuracy notes baked into the copy:

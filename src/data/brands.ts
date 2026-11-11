@@ -3,7 +3,7 @@
  * Facts that could not be verified officially are omitted (not guessed).
  * Always tell the user to check the manual for their exact model.
  */
-export type BrandId = "stihl" | "husqvarna" | "echo" | "poulan" | "craftsman" | "ryobi" | "homelite";
+export type BrandId = "stihl" | "husqvarna" | "echo" | "poulan" | "craftsman" | "ryobi" | "homelite" | "honda" | "briggs" | "kohler" | "predator";
 
 export type SourcedFact = {
   value: string;
@@ -167,6 +167,35 @@ export const BRANDS: BrandProfile[] = [
       { title: "Homelite official owner's manuals library (UT32600 / UT32650)", url: "https://manuals.homelite.com/documents/1729" },
       { title: "Homelite UT32600 / UT32650 operator manual pack", url: "https://manuals.homelite.com/system/files/4509/original/UT32600_UT32650_056_r.pdf?2017=" },
     ],
+    checkManual: CHECK,
+  },
+
+  {
+    id: "honda",
+    name: "Honda",
+    aliases: ["honda"],
+    sources: [{ title: "Honda Engines official owner’s manuals", url: "https://engines.honda.com/support-and-service/owners-manuals" }],
+    checkManual: CHECK,
+  },
+  {
+    id: "briggs",
+    name: "Briggs & Stratton",
+    aliases: ["briggs", "briggs & stratton", "briggs and stratton", "b&s"],
+    sources: [{ title: "Briggs & Stratton official operator manuals", url: "https://www.briggsandstratton.com/na/en_us/support/manuals.html" }],
+    checkManual: CHECK,
+  },
+  {
+    id: "kohler",
+    name: "Kohler",
+    aliases: ["kohler", "kohler courage", "kohler xt"],
+    sources: [{ title: "Kohler Engines official literature", url: "https://kohlerengines.com/brochures-literature" }],
+    checkManual: CHECK,
+  },
+  {
+    id: "predator",
+    name: "Predator",
+    aliases: ["predator", "harbor freight predator"],
+    sources: [{ title: "Harbor Freight official Predator 212 owner’s manual", url: "https://manuals.harborfreight.com/manuals/60000-60999/60363-792363603638.pdf" }],
     checkManual: CHECK,
   },
 ];

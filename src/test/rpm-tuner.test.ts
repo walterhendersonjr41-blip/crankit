@@ -246,7 +246,7 @@ describe("4-stroke mode and governed speed", () => {
 
 describe("app version cache", () => {
   it("bumps the service worker cache with the app version", () => {
-    expect(APP_VERSION).toBe("1.3.1");
+    expect(APP_VERSION).toBe("1.4.0");
     const sw = readFileSync(path.join(process.cwd(), "public/sw.js"), "utf8");
     expect(sw).toContain(`const CACHE = "crankit-v${APP_VERSION}"`);
   });

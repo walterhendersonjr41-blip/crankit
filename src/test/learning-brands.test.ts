@@ -144,7 +144,9 @@ describe("brand table", () => {
   const required = ["stihl", "husqvarna", "echo", "poulan", "craftsman", "ryobi", "homelite"] as const;
 
   it("covers the seven requested brands and sources every included fact", () => {
-    expect(BRANDS.map((b) => b.id).sort()).toEqual([...required].sort());
+    const ids = BRANDS.map((b) => b.id);
+    for (const id of required) expect(ids).toContain(id);
+    expect(new Set(ids).size).toBe(ids.length);
     for (const brand of BRANDS) {
       expect(brand.sources.length).toBeGreaterThan(0);
       expect(brand.checkManual.toLowerCase()).toMatch(/check/);

@@ -9,6 +9,9 @@ import { FREE_GARAGE_TOOL_LIMIT } from "../config/monetization";
 import { buildSampleFleet, newId, type GarageTool, type MixRatio } from "../lib/storage";
 import { useAppState } from "../state";
 import { deleteWin, formatMoney, totalPartCost, totalSaved, totalShopSaved, useWins } from "../lib/wins";
+import { MODEL_SPECS, findModelSpec, officialMaxRpm } from "../data/modelSpecs";
+import { ModelSpecPicker } from "../components/ModelSpecPicker";
+import { ToolHistoryCard } from "../components/ToolHistoryCard";
 
 const FILE_SIZES: GarageTool["chainFileSize"][] = ["5/32\"", "3/16\"", "7/32\"", "n/a"];
 const RATIOS: MixRatio[] = ["50:1", "40:1", "32:1", "other"];
@@ -178,7 +181,7 @@ export function GaragePage() {
       <div>
         <h2 className="text-2xl font-black">My Garage</h2>
         <p className="text-sm text-neutral-400">
-          Track every saw and trimmer, its mix, plug, file size, last tune, and repair notes.
+          Track every saw, trimmer, mower, generator, or washer — mix, plug, file size, last tune, official engine, Tool History, and repair notes.
           {!isPro && ` Free plan: ${FREE_GARAGE_TOOL_LIMIT} tools.`}
         </p>
       </div>
@@ -269,6 +272,22 @@ export function GaragePage() {
               placeholder="16-inch driveway saw"
             />
           </Field>
+          <ModelSpecPicker
+            label="Official engine / model (optional)"
+            value={MODEL_SPECS.find((s) => s.name === form.brandModel || s.aliases.some((a) => form.brandModel.toLowerCase().includes(a)))?.id}
+            onPick={(spec) => {
+              if (!spec) return;
+              setForm({
+                ...form,
+                brand: spec.brand,
+                brandModel: spec.name,
+                maxRpm: officialMaxRpm(spec) ?? form.maxRpm,
+                toolType: spec.engineCycle === "4-stroke" && (form.toolType === "chainsaw" || form.toolType === "weed-eater")
+                  ? "lawn-mower"
+                  : form.toolType,
+              });
+            }}
+          />
           <Field label="Mix ratio">
             <select
               value={form.mixRatio}
@@ -402,6 +421,13 @@ export function GaragePage() {
                 {t.repairNotes}
               </pre>
             )}
+            {findModelSpec(t.name, t.brandModel, t.brand) && (
+              <p className="text-xs text-neutral-400">
+                Official specs available for {findModelSpec(t.name, t.brandModel, t.brand)!.name}
+                {findModelSpec(t.name, t.brandModel, t.brand)!.engineCycle === "4-stroke" ? " (4-stroke)" : ""}.
+              </p>
+            )}
+            <ToolHistoryCard tool={t} />
           </article>
         ))}
       </div>

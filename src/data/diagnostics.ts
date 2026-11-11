@@ -1,13 +1,16 @@
 import type { PartId } from "../config/monetization";
 import { LIMITER_NOTE, STAMPED_LETTER_NOTE } from "./carbNotes";
 
-export type ToolType = "chainsaw" | "weed-eater" | "leaf-blower" | "hedge-trimmer";
+export type ToolType = "chainsaw" | "weed-eater" | "leaf-blower" | "hedge-trimmer" | "lawn-mower" | "generator" | "pressure-washer";
 
 export const TOOL_TYPES: { id: ToolType; label: string }[] = [
   { id: "chainsaw", label: "Chainsaw" },
   { id: "weed-eater", label: "Weed Eater" },
   { id: "leaf-blower", label: "Leaf Blower" },
   { id: "hedge-trimmer", label: "Hedge Trimmer" },
+  { id: "lawn-mower", label: "Lawn Mower" },
+  { id: "generator", label: "Generator" },
+  { id: "pressure-washer", label: "Pressure Washer" },
 ];
 
 export type BadgeKind = "diy" | "part" | "shop";

@@ -20,8 +20,33 @@ import {
   type TuneMode,
   type TuneVerdict,
 } from "../lib/rpmMath";
-import { findModelSpec, officialMaxRpm } from "../data/modelSpecs";
+import { findModelSpec, officialMaxRpm, type ModelSpec } from "../data/modelSpecs";
 import { useAppState } from "../state";
+import {
+  AUTO_DETECT_SECONDS,
+  classifyEngine,
+  formatConfidence,
+  type EngineGuess,
+} from "../lib/engineDetect";
+import { readingLooksWrong } from "../lib/engineSanity";
+import {
+  analyzeMisses,
+  firingHzForRpm,
+  formatMissRate,
+  syntheticMissWave,
+  type MissReport,
+  type SimMissPattern,
+} from "../lib/missDetect";
+import {
+  getCustomSetup,
+  saveHealthCheck,
+  scoringSpec,
+  usesOwnBaseline,
+  recordMismatchConfirm,
+  markToolCustom,
+  useHealthRecord,
+} from "../lib/toolHealth";
+import { EngineShortlist, ModelSpecPicker } from "./ModelSpecPicker";
 
 const LISTEN_LABEL = "🎙️ Listen to My Engine (Live RPM & Tune Check)";
 const FFT_SIZE = 8192;
@@ -51,8 +76,13 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
     simOsc?: OscillatorNode;
     simGain?: GainNode;
     filter?: BiquadFilterNode;
+    proc?: ScriptProcessorNode;
+    mute?: GainNode;
     raf?: number;
   } | null>(null);
+  const audioRing = useRef<Float32Array[]>([]);
+  const collectingRef = useRef(false);
+  const rpmTrail = useRef<number[]>([]);
   const smootherRef = useRef(new RpmSmoother());
   const captureBuf = useRef<number[]>([]);
   const simulateRef = useRef(false);
@@ -60,6 +90,7 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
 
   const [toolId, setToolId] = useState(tools[0]?.id ?? "");
   const selected = tools.find((t) => t.id === toolId) ?? tools[0];
+  const healthRec = useHealthRecord(selected?.id);
   const matchedSpec = findModelSpec(selected?.name, selected?.brandModel, selected?.brand);
   const [maxRpmText, setMaxRpmText] = useState(selected?.maxRpm ? String(selected.maxRpm) : "");
   const [mode, setMode] = useState<TuneMode>("idle");
@@ -74,18 +105,43 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
   const [phase, setPhase] = useState<CapturePhase>("idle");
   const [countdown, setCountdown] = useState(0);
   const [heldRpm, setHeldRpm] = useState<number | null>(null);
+  const [pickedSpec, setPickedSpec] = useState<ModelSpec | undefined>(undefined);
+  const [guess, setGuess] = useState<EngineGuess | null>(null);
+  const [detecting, setDetecting] = useState(false);
+  const [mismatchOk, setMismatchOk] = useState(false);
+  const [showSwap, setShowSwap] = useState(false);
+  const [miss, setMiss] = useState<MissReport | null>(null);
+  const [simMiss, setSimMiss] = useState<SimMissPattern | "healthy">("healthy");
+  const [sessionIdle, setSessionIdle] = useState<number | undefined>();
+  const [sessionIdleStab, setSessionIdleStab] = useState<number | undefined>();
+  const [sessionWot, setSessionWot] = useState<number | undefined>();
+  const [sessionRevUp, setSessionRevUp] = useState<number | undefined>();
+  const [healthNote, setHealthNote] = useState("");
+  const [installedTyped, setInstalledTyped] = useState("");
 
-  const maxRpm = parseMaxRpm(maxRpmText, cycle);
+  const custom = healthRec?.custom ?? (selected ? getCustomSetup(selected.id) : undefined);
+  const machineSpec = pickedSpec ?? matchedSpec;
+  const judgeSpec = scoringSpec(machineSpec, custom) ?? (usesOwnBaseline(custom) ? undefined : machineSpec);
+  const ownBaseline = usesOwnBaseline(custom);
+  const maxRpm = parseMaxRpm(maxRpmText || (custom?.maxRpm != null ? String(custom.maxRpm) : ""), cycle);
   const displayRpm = simulate ? simRpm : phase === "result" && heldRpm != null ? heldRpm : liveRpm;
   const showVerdict = displayRpm != null && (simulate || clear || phase === "result");
   const tuneCtx = { toolType: selected?.toolType, cycle };
-  const verdict = showVerdict && displayRpm != null ? tuneVerdict(displayRpm, mode, maxRpm, matchedSpec, tuneCtx) : null;
+  const sanity =
+    showVerdict && displayRpm != null && judgeSpec && !ownBaseline && !mismatchOk
+      ? readingLooksWrong(displayRpm, mode, { spec: judgeSpec, cycle, modelName: judgeSpec.name })
+      : { mismatch: false as const };
+  const blockVerdict = Boolean(sanity.mismatch);
+  const verdict =
+    showVerdict && displayRpm != null && !blockVerdict
+      ? tuneVerdict(displayRpm, mode, maxRpm, judgeSpec, tuneCtx)
+      : null;
   const needMaxBanner =
     cycle === "2-stroke" &&
     mode === "full-throttle" &&
-    !hasWotAnchor(maxRpm, matchedSpec, cycle) &&
+    !hasWotAnchor(maxRpm, ownBaseline ? undefined : judgeSpec, cycle) &&
     !canUseGeneralWot(tuneCtx);
-  const electronic = hasElectronicCarb(selected) || Boolean(matchedSpec?.noMixtureScrews);
+  const electronic = hasElectronicCarb(selected) || Boolean(judgeSpec?.noMixtureScrews);
   const highlighted = autoOpen || carbFocus === "tuner";
 
   useEffect(() => {
@@ -95,6 +151,13 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
   useEffect(() => {
     cycleRef.current = cycle;
   }, [cycle]);
+
+  useEffect(() => {
+    const spec = scoringSpec(pickedSpec ?? matchedSpec, selected ? getCustomSetup(selected.id) : undefined);
+    if (spec?.engineCycle === "4-stroke") setCycle("4-stroke");
+    else if (spec?.engineCycle === "2-stroke") setCycle("2-stroke");
+    setMismatchOk(false);
+  }, [selected?.id, matchedSpec?.id, pickedSpec?.id]);
 
   useEffect(() => {
     const fromTool = selected?.maxRpm;
@@ -127,6 +190,8 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
     bag?.simOsc?.disconnect();
     bag?.simGain?.disconnect();
     bag?.filter?.disconnect();
+    try { bag?.proc?.disconnect(); } catch { /* ignore */ }
+    try { bag?.mute?.disconnect(); } catch { /* ignore */ }
     bag?.source?.disconnect();
     bag?.analyser.disconnect();
     bag?.stream?.getTracks().forEach((t) => t.stop());
@@ -158,7 +223,24 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
       analyser.fftSize = FFT_SIZE;
       analyser.smoothingTimeConstant = 0.15;
       source.connect(analyser);
-      audioRef.current = { ctx, source, analyser, stream };
+      const proc = ctx.createScriptProcessor(4096, 1, 1);
+      const mute = ctx.createGain();
+      mute.gain.value = 0;
+      source.connect(proc);
+      proc.connect(mute);
+      mute.connect(ctx.destination);
+      audioRing.current = [];
+      rpmTrail.current = [];
+      proc.onaudioprocess = (ev) => {
+        const input = ev.inputBuffer.getChannelData(0);
+        audioRing.current.push(new Float32Array(input));
+        let total = audioRing.current.reduce((s, a) => s + a.length, 0);
+        while (total > ctx.sampleRate * 6 && audioRing.current.length > 1) {
+          total -= audioRing.current[0].length;
+          audioRing.current.shift();
+        }
+      };
+      audioRef.current = { ctx, source, analyser, stream, proc, mute };
       smootherRef.current.reset();
       setListening(true);
       setClear(false);
@@ -196,6 +278,8 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
           const smooth = smootherRef.current.push(est.rpm);
           setLiveRpm(smooth);
           setClear(true);
+          rpmTrail.current.push(smooth);
+          if (rpmTrail.current.length > 40) rpmTrail.current.shift();
           if (phaseRef.current === "capturing") captureBuf.current.push(est.rpm);
         } else {
           setClear(false);
@@ -345,6 +429,123 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
     }
     setHeldRpm(median(samples));
     setClear(true);
+    const mid = median(samples);
+    setSessionWot(mid);
+    if (sessionIdle != null && mid > sessionIdle) {
+      setSessionRevUp(2000);
+    }
+    const wave = concatRing();
+    const sr = audioRef.current?.ctx.sampleRate ?? 44100;
+    if (wave.length > sr * 0.4) {
+      const report = analyzeMisses(wave, sr, { cycle: cycleRef.current, mode: "full-throttle" });
+      setMiss(report);
+    }
+  }
+
+  function concatRing(): Float32Array {
+    const parts = audioRing.current;
+    const n = parts.reduce((s, a) => s + a.length, 0);
+    const out = new Float32Array(n);
+    let o = 0;
+    for (const part of parts) {
+      out.set(part, o);
+      o += part.length;
+    }
+    return out;
+  }
+
+  function applyPickedSpec(spec: ModelSpec | undefined) {
+    setPickedSpec(spec);
+    if (!spec) return;
+    setCycle(spec.engineCycle === "4-stroke" ? "4-stroke" : "2-stroke");
+    const official = officialMaxRpm(spec);
+    if (official) setMaxRpmText(String(official));
+    setMismatchOk(false);
+  }
+
+  async function runAutoDetect() {
+    setGuess(null);
+    setDetecting(true);
+    if (simulate) {
+      const sr = 44100;
+      const rpm = simRpm;
+      const wave = syntheticMissWave(simMiss, firingHzForRpm(rpm, cycleRef.current), sr, AUTO_DETECT_SECONDS);
+      const g = classifyEngine(wave, sr, Array.from({ length: 10 }, () => rpm));
+      setGuess(g);
+      setMiss(analyzeMisses(wave, sr, { cycle: g.cycle ?? cycleRef.current, mode }));
+      setDetecting(false);
+      return;
+    }
+    if (!listening) await startMic();
+    audioRing.current = [];
+    rpmTrail.current = [];
+    collectingRef.current = true;
+    await wait(AUTO_DETECT_SECONDS * 1000);
+    collectingRef.current = false;
+    setDetecting(false);
+    const bag = audioRef.current;
+    if (!bag) return;
+    const wave = concatRing();
+    const g = classifyEngine(wave, bag.ctx.sampleRate, rpmTrail.current.slice());
+    setGuess(g);
+    if (wave.length > 1000) {
+      setMiss(analyzeMisses(wave, bag.ctx.sampleRate, { cycle: g.cycle ?? cycleRef.current, mode }));
+    }
+  }
+
+  function applySimMiss(pattern: SimMissPattern | "healthy") {
+    setSimMiss(pattern);
+    const rpm = simRpm;
+    const sr = 44100;
+    const wave = syntheticMissWave(pattern, firingHzForRpm(rpm, cycleRef.current), sr, 1.2);
+    setMiss(analyzeMisses(wave, sr, { cycle: cycleRef.current, mode, engineHot: pattern === "hot-coil" }));
+  }
+
+  function recordCurrentIdle() {
+    if (displayRpm == null) return;
+    setSessionIdle(displayRpm);
+    if (rpmTrail.current.length >= 4) {
+      const vals = rpmTrail.current.slice(-12);
+      const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+      const cv = mean ? Math.sqrt(vals.reduce((s, v) => s + (v - mean) ** 2, 0) / vals.length) / mean : 0;
+      setSessionIdleStab(cv);
+    }
+    const wave = concatRing();
+    const sr = audioRef.current?.ctx.sampleRate ?? 44100;
+    if (wave.length > sr * 0.4) {
+      setMiss(analyzeMisses(wave, sr, { cycle: cycleRef.current, mode: "idle" }));
+    }
+  }
+
+  function onYesItsRight() {
+    if (selected) {
+      const next = recordMismatchConfirm(selected.id);
+      if (next.confirmCount >= 2) setShowSwap(true);
+    }
+    setMismatchOk(true);
+  }
+
+  function saveCheck() {
+    if (!selected) {
+      setHealthNote("Pick a garage tool first.");
+      return;
+    }
+    if (blockVerdict) {
+      setHealthNote("Confirm the engine before saving a health check.");
+      return;
+    }
+    const saved = saveHealthCheck({
+      toolId: selected.id,
+      idleRpm: sessionIdle,
+      idleStability: sessionIdleStab,
+      wotRpm: sessionWot ?? (mode === "full-throttle" ? displayRpm ?? undefined : undefined),
+      missRate: miss?.missRate,
+      missPattern: miss?.pattern,
+      revUpMs: sessionRevUp,
+      spec: judgeSpec,
+      confirmedMismatch: mismatchOk,
+    });
+    setHealthNote(saved ? (saved.isBaseline ? "Baseline health check saved on this device." : `Health check saved · ${saved.score.toFixed(1)}%.`) : "Health check was not saved.");
   }
 
   const rpmLabel = displayRpm != null && (simulate || clear || phase === "result") ? Math.round(displayRpm) : null;
@@ -362,18 +563,18 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
         <p className="mt-1 text-sm leading-relaxed text-neutral-300">
           Listens on this device only. Audio is analyzed in the browser and is never recorded, saved, or uploaded.
         </p>
-        {matchedSpec && (
+        {judgeSpec && (
           <p className="mt-2 rounded-xl border border-diy/40 bg-diy/10 px-3 py-2 text-sm leading-relaxed text-green-100">
-            Using specs for {matchedSpec.name} from the official manual.
-            {matchedSpec.idleRpm != null && ` Idle ${matchedSpec.idleRpm.toLocaleString()} RPM.`}
-            {matchedSpec.idleRpmMin != null &&
-              matchedSpec.idleRpmMax != null &&
-              ` Idle ${matchedSpec.idleRpmMin.toLocaleString()}–${matchedSpec.idleRpmMax.toLocaleString()} RPM.`}
-            {matchedSpec.maxRpm != null && ` Max / WOT ${matchedSpec.maxRpm.toLocaleString()} RPM.`}
-            {matchedSpec.maxRpmMin != null &&
-              matchedSpec.maxRpmMax != null &&
-              ` WOT ${matchedSpec.maxRpmMin.toLocaleString()}–${matchedSpec.maxRpmMax.toLocaleString()} RPM.`}
-            {matchedSpec.note ? ` ${matchedSpec.note}` : ""}
+            Using specs for {judgeSpec.name} from the official manual.
+            {judgeSpec.idleRpm != null && ` Idle ${judgeSpec.idleRpm.toLocaleString()} RPM.`}
+            {judgeSpec.idleRpmMin != null &&
+              judgeSpec.idleRpmMax != null &&
+              ` Idle ${judgeSpec.idleRpmMin.toLocaleString()}–${judgeSpec.idleRpmMax.toLocaleString()} RPM.`}
+            {judgeSpec.maxRpm != null && ` Max / WOT ${judgeSpec.maxRpm.toLocaleString()} RPM.`}
+            {judgeSpec.maxRpmMin != null &&
+              judgeSpec.maxRpmMax != null &&
+              ` WOT ${judgeSpec.maxRpmMin.toLocaleString()}–${judgeSpec.maxRpmMax.toLocaleString()} RPM.`}
+            {judgeSpec.note ? ` ${judgeSpec.note}` : ""}
           </p>
         )}
       </div>
@@ -385,6 +586,28 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
       >
         {LISTEN_LABEL}
       </button>
+      <button
+        type="button"
+        onClick={() => void runAutoDetect()}
+        disabled={detecting}
+        className="flex min-h-12 w-full items-center justify-center rounded-xl border border-garage-orange px-4 text-center text-sm font-black text-orange-200 disabled:opacity-50"
+      >
+        {detecting ? "Listening ~5 seconds…" : "Auto-detect engine"}
+      </button>
+      {guess && (
+        <div className="space-y-2 rounded-xl border border-white/15 bg-black/30 p-3">
+          <p className="text-sm font-black leading-snug">{guess.summary}</p>
+          {!guess.lowConfidence && (
+            <p className="text-xs text-neutral-400">{formatConfidence(guess.confidence)}</p>
+          )}
+          {!guess.lowConfidence && (
+            <EngineShortlist specs={guess.matches} onPick={(spec) => applyPickedSpec(spec)} />
+          )}
+          {guess.lowConfidence && (
+            <p className="text-xs text-neutral-400">Pick from the official list below rather than guessing.</p>
+          )}
+        </div>
+      )}
 
       {error === "denied" && (
         <p className="text-sm text-yellow-100">
@@ -449,6 +672,21 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
             <input type="checkbox" checked={playTone} onChange={(e) => setPlayTone(e.target.checked)} />
             Play a synthesized engine tone
           </label>
+          <p className="text-xs font-bold text-neutral-300">Demo miss patterns</p>
+          <div className="flex flex-wrap gap-2">
+            {(["healthy", "regular-skip", "surge", "rich-burble", "bog", "hot-coil"] as const).map((pat) => (
+              <button
+                key={pat}
+                type="button"
+                onClick={() => applySimMiss(pat)}
+                className={`min-h-11 rounded-xl border px-3 text-xs font-bold ${
+                  simMiss === pat ? "border-garage-orange bg-garage-orange text-black" : "border-white/20"
+                }`}
+              >
+                {pat === "regular-skip" ? "Regular skips" : pat === "rich-burble" ? "Rich burble" : pat === "hot-coil" ? "Hot coil" : pat[0].toUpperCase() + pat.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -474,6 +712,11 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
           </select>
         </label>
       )}
+      <ModelSpecPicker
+        label="Or pick the official engine (one tap, nothing is assigned until you pick)"
+        value={pickedSpec?.id ?? judgeSpec?.id ?? matchedSpec?.id}
+        onPick={(spec) => applyPickedSpec(spec)}
+      />
 
       <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Engine type">
         <button
@@ -597,6 +840,44 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
               Stop listening
             </button>
           )}
+          {mode === "idle" && displayRpm != null && (clear || simulate) && (
+            <button
+              type="button"
+              onClick={recordCurrentIdle}
+              className="min-h-11 w-full rounded-xl border border-white/20 text-sm font-bold"
+            >
+              Use this idle for a Health check
+            </button>
+          )}
+        </div>
+      )}
+
+      {blockVerdict && sanity.mismatch && (
+        <div className="space-y-2 rounded-2xl border border-yellow-400/50 bg-yellow-950/40 p-4" role="status">
+          <p className="text-lg font-black leading-snug">{sanity.message}</p>
+          <p className="text-sm leading-relaxed">
+            This reading is too far off the official spec (or sounds like a different engine cycle) to score or give a scary verdict yet.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <button type="button" onClick={() => { setShowSwap(true); setPickedSpec(undefined); }} className="min-h-11 rounded-xl border border-white/20 text-xs font-bold">
+              Change engine
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setHeldRpm(null);
+                setPhase("idle");
+                setMismatchOk(false);
+                if (!simulate) void startMic();
+              }}
+              className="min-h-11 rounded-xl border border-white/20 text-xs font-bold"
+            >
+              Retest
+            </button>
+            <button type="button" onClick={onYesItsRight} className="min-h-11 rounded-xl border border-white/20 text-xs font-bold">
+              Yes, it&apos;s right
+            </button>
+          </div>
         </div>
       )}
 
@@ -608,7 +889,7 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
       )}
 
       {electronic && cycle === "2-stroke" && (
-        <SafetyNote>{matchedSpec?.noMixtureScrewsNote || ELECTRONIC_CARB_NOTE}</SafetyNote>
+        <SafetyNote>{judgeSpec?.noMixtureScrewsNote || ELECTRONIC_CARB_NOTE}</SafetyNote>
       )}
       {cycle === "2-stroke" ? (
         <>
@@ -622,6 +903,101 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
           H-screw mixture advice, and no audio is recorded or uploaded.
         </SafetyNote>
       )}
+      {miss && (
+        <div className="space-y-2 rounded-2xl border border-white/15 bg-black/30 p-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-garage-orange">Miss Detector</p>
+          <p className="text-lg font-black leading-snug">
+            {formatMissRate(miss.missRate)} miss rate · {miss.patternLabel}
+          </p>
+          <p className="text-sm leading-relaxed">{miss.likelyCause}</p>
+        </div>
+      )}
+
+      <div className="space-y-2 rounded-2xl border border-white/10 bg-black/20 p-4">
+        <p className="text-sm font-black">Health check</p>
+        <p className="text-xs leading-relaxed text-neutral-400">
+          Saves idle RPM and stability, WOT, miss rate, and rev-up time on this device only, for the selected garage tool. The first check is the baseline.
+        </p>
+        <button type="button" onClick={saveCheck} className="min-h-12 w-full rounded-xl bg-garage-orange text-sm font-black text-black">
+          Save health check
+        </button>
+        {healthNote && <p className="text-xs text-neutral-300">{healthNote}</p>}
+      </div>
+
+      {selected && !showSwap && (custom?.confirmCount ?? 0) < 2 && !custom?.enabled && (
+        <button type="button" onClick={() => setShowSwap(true)} className="min-h-11 w-full text-xs font-bold text-orange-200">
+          Mark as Custom / engine swap
+        </button>
+      )}
+
+      {(showSwap || custom?.enabled || (selected && (custom?.confirmCount ?? 0) >= 2)) && (
+        <div className="space-y-2 rounded-2xl border border-white/15 bg-black/30 p-4">
+          <p className="text-sm font-black">Which engine is actually in it?</p>
+          <p className="text-xs leading-relaxed text-neutral-400">
+            If the installed engine is on the official list and is not modified, we judge it against that engine’s stock specs. Own-baseline scoring is used only when the engine is unknown or you mark it Modified.
+          </p>
+          <ModelSpecPicker
+            label="Installed engine"
+            value={custom?.installedSpecId}
+            onPick={(spec) => {
+              if (!selected) return;
+              markToolCustom(selected.id, {
+                installedEngine: spec?.name ?? installedTyped,
+                installedSpecId: spec?.id,
+                modified: custom?.modified,
+                maxRpm: spec ? officialMaxRpm(spec) : custom?.maxRpm,
+              });
+              applyPickedSpec(spec);
+            }}
+          />
+          <label className="block text-xs font-semibold text-neutral-300">
+            Or type the engine
+            <input
+              className="input mt-1"
+              value={installedTyped}
+              onChange={(e) => setInstalledTyped(e.target.value)}
+              onBlur={() => {
+                if (!selected || !installedTyped.trim()) return;
+                markToolCustom(selected.id, { installedEngine: installedTyped.trim(), modified: custom?.modified, maxRpm: custom?.maxRpm });
+              }}
+            />
+          </label>
+          {selected && (
+            <label className="flex min-h-11 items-center gap-2 text-xs font-semibold">
+              <input
+                type="checkbox"
+                checked={Boolean(custom?.modified)}
+                onChange={(e) =>
+                  markToolCustom(selected.id, {
+                    installedEngine: custom?.installedEngine ?? installedTyped,
+                    installedSpecId: custom?.installedSpecId,
+                    modified: e.target.checked,
+                    maxRpm: custom?.maxRpm,
+                  })
+                }
+              />
+              Modified (cam, carb, porting, etc.)
+            </label>
+          )}
+          <button
+            type="button"
+            className="min-h-11 text-xs font-bold text-orange-200"
+            onClick={() => {
+              if (!selected) return;
+              markToolCustom(selected.id, {
+                installedEngine: custom?.installedEngine ?? installedTyped,
+                installedSpecId: custom?.installedSpecId,
+                modified: custom?.modified,
+                maxRpm: custom?.maxRpm,
+              });
+              setShowSwap(true);
+            }}
+          >
+            Mark as Custom / engine swap
+          </button>
+        </div>
+      )}
+
       <FixedItButton
         source="tuner"
         tools={tools}

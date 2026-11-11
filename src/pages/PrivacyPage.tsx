@@ -13,11 +13,12 @@ export function PrivacyPage() {
         <section className="space-y-2">
           <h2 className="text-lg font-black">Stored on this device</h2>
           <p className="text-sm leading-relaxed text-neutral-300">
-            My Garage tools, fuel batches, diagnostic history, My Wins (FIXED IT! logs with part and shop-cost figures),
+            My Garage tools, fuel batches, diagnostic history, Tool History (health checks, Health Score, and optional
+            custom / engine-swap notes), My Wins (FIXED IT! logs with part and shop-cost figures),
             chat, local learning (FIXED IT results, ratings, tips, and wins), and a Pro unlock flag stay in this
             browser’s localStorage. That data is not sent to a
             CrankIt server. Use Reset learning in Ask Mechanic to clear learning, or clear this site’s data in your
-            browser to wipe everything stored here.
+            browser to wipe everything stored here. A copied or printed Tool history report has no owner name, email, or phone.
           </p>
         </section>
         <section className="space-y-2">
@@ -37,8 +38,11 @@ export function PrivacyPage() {
         <section className="space-y-2">
           <h2 className="text-lg font-black">Microphone and the sound tuner</h2>
           <p className="text-sm leading-relaxed text-neutral-300">
-            The Acoustic RPM &amp; Carb Sound Tuner can use your microphone to estimate engine speed in the browser.
-            That audio is analyzed on this device only. It is never recorded, saved, or uploaded. Logging a FIXED IT! win from the tuner stores only the notes you type — no audio. You can deny the
+            The Acoustic RPM &amp; Carb Sound Tuner can use your microphone to estimate engine speed, listen for missed
+            firings, and Auto-detect engine (cycle, a rough cylinder count, governed vs free-revving, and RPM).
+            That audio is analyzed on this device only. It is never recorded, saved, or uploaded. Auto-detect never
+            assigns a model until you tap one. Logging a FIXED IT! win or a Health check stores only the numbers and notes
+            you save — no audio. You can deny the
             microphone and still use Test Without Mic. A model number in My Garage may match official idle or max RPM
             figures stored in the app; those come from published manuals, not from your recordings.
           </p>
