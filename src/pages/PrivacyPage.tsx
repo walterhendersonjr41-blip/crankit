@@ -34,6 +34,15 @@ export function PrivacyPage() {
           </p>
         </section>
         <section className="space-y-2">
+          <h2 className="text-lg font-black">Microphone and the sound tuner</h2>
+          <p className="text-sm leading-relaxed text-neutral-300">
+            The Acoustic RPM &amp; Carb Sound Tuner can use your microphone to estimate engine speed in the browser.
+            That audio is analyzed on this device only. It is never recorded, saved, or uploaded. You can deny the
+            microphone and still use Test Without Mic. A model number in My Garage may match official idle or max RPM
+            figures stored in the app; those come from published manuals, not from your recordings.
+          </p>
+        </section>
+        <section className="space-y-2">
           <h2 className="text-lg font-black">Payments and parts links</h2>
           <p className="text-sm leading-relaxed text-neutral-300">
             If you buy CrankIt Pro, checkout happens on Stripe’s site, not in this app. We do not store card numbers.

@@ -18,6 +18,7 @@ describe("mechanic intent engine", () => {
     expect(detectIntent(QUICK_CHIPS[2])).toBe("wrong-oil-gas");
     expect(detectIntent(QUICK_CHIPS[3])).toBe("carb-screws");
     expect(detectIntent(QUICK_CHIPS[4])).toBe("shop-threshold");
+    expect(detectIntent(QUICK_CHIPS[5])).toBe("rpm-tuner");
   });
 
   it("recognizes wrong oil, old gas, and starting fluid in plain English", () => {

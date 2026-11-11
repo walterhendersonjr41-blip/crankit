@@ -23,6 +23,8 @@ export type GarageTool = {
   sparkPlugType: string;
   chainFileSize: "5/32\"" | "3/16\"" | "7/32\"" | "n/a";
   lastTuneDate: string;
+  /** Optional max / no-load RPM copied from the tool’s manual by the user. */
+  maxRpm?: number;
   repairNotes: string;
   isSample?: boolean;
   createdAt: string;

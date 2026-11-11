@@ -9,6 +9,7 @@ export type MechanicIntent =
   | "wrong-oil-gas"
   | "dies-tilted"
   | "carb-screws"
+  | "rpm-tuner"
   | "shop-threshold"
   | "bogs-choke"
   | "wont-start"
@@ -19,6 +20,7 @@ export type MechanicTab = "diagnose" | "carb" | "fuel" | "garage" | "shop";
 export type MechanicLink = {
   tab: MechanicTab;
   label: string;
+  focus?: "tuner";
 };
 
 export type MechanicReply = {
@@ -33,6 +35,7 @@ export const QUICK_CHIPS = [
   "Put wrong oil / old gas in it",
   "Which carb screw do I turn?",
   "Is my engine blown?",
+  "Listen to my engine",
 ] as const;
 
 const FIRE_DRAIN =
@@ -62,6 +65,24 @@ export function detectIntent(input: string): MechanicIntent {
   if (!t) return "fallback";
 
   // Exact (and near-exact) chip matches first.
+  if (
+    t === normalize(QUICK_CHIPS[5]) ||
+    has(
+      t,
+      "listen to my engine",
+      "listen to the engine",
+      "listen to engine",
+      "acoustic rpm",
+      "sound tuner",
+      "rpm tuner",
+      "live rpm",
+      "check my rpm",
+      "engine rpm",
+      "tachometer",
+    )
+  ) {
+    return "rpm-tuner";
+  }
   if (t === normalize(QUICK_CHIPS[0]) || (has(t, "choke") && has(t, "dies", "die", "bogs", "stall"))) {
     if (!has(t, "tilt", "sideways", "on its side")) return "bogs-choke";
   }
@@ -196,6 +217,16 @@ const REPLIES: Record<Exclude<MechanicIntent, "greeting">, (input: string) => Me
       "Fish the line out of the tank with a bent wire hook (outdoors, away from sparks). If the line is stiff, split at the grommet, or the filter isn't staying in the fuel, replace the Tygon (or equivalent) line and the $3 in-tank filter — a $3–$5 driveway fix.\n\n" +
       `${FIRE_DRAIN}`,
     links: [{ tab: "diagnose", label: "Open Diagnose (primer / fuel-line tree)" }],
+  }),
+  "rpm-tuner": () => ({
+    intent: "rpm-tuner",
+    text:
+      "Use the Acoustic RPM & Carb Sound Tuner on the Carb & Tune tab. It listens on this device only — audio is never recorded or uploaded.\n\n" +
+      "Hold the phone near the muffler, pick At Idle or Full Throttle Test, and read the verdict. If the garage tool’s model is in the official-spec list, those manual RPM figures are used automatically. Otherwise we use general ranges, or a max RPM you type from your manual.\n\n" +
+      STAMPED_LETTER_NOTE +
+      " " +
+      LIMITER_NOTE,
+    links: [{ tab: "carb", label: "Open the sound tuner", focus: "tuner" }],
   }),
   "carb-screws": () => ({
     intent: "carb-screws",
@@ -344,6 +375,7 @@ const INTENT_SYMPTOMS: Record<MechanicIntent, string[]> = {
   "wrong-oil-gas": ["intermittent-start", "wrong oil", "old gas", "fuel mix", "4-stroke oil"],
   "dies-tilted": ["primer-bulb", "dies when tilted", "fuel line", "in-tank"],
   "carb-screws": ["carb", "idle", "spins-at-idle", "bogs-on-accel", "L H T"],
+  "rpm-tuner": ["rpm", "idle", "tach", "tune"],
   "bogs-choke": ["bogs-on-accel", "bogs-under-load", "bogs", "choke"],
   "wont-start": ["wont-start", "won't start", "no start", "spark"],
   "shop-threshold": ["shop meter", "compression", "scoring"],

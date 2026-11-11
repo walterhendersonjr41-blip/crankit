@@ -41,6 +41,11 @@ describe("CrankIt app", () => {
 
     await openTab("Carb & Tune");
     expect(screen.getByRole("heading", { name: "Carb & Tune" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Listen to My Engine \(Live RPM & Tune Check\)/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("checkbox", { name: /Test Without Mic/i }));
+    expect(screen.getByText(/Simulated RPM/i)).toBeInTheDocument();
+    expect(screen.getByText(/Idle Locked In/i)).toBeInTheDocument();
+    expect(screen.getByText(/audio is analyzed in the browser and is never recorded/i)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Bogs at full throttle" }));
     expect(screen.getAllByText(/1\/8 turn counter-clockwise/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Screw-head identifier/i)).toBeInTheDocument();

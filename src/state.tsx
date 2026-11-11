@@ -33,6 +33,9 @@ type AppState = {
   openPro: (reason?: string) => void;
   closePro: () => void;
   proReason: string;
+  carbFocus: "tuner" | null;
+  openCarbTuner: () => void;
+  clearCarbFocus: () => void;
 };
 
 const Ctx = createContext<AppState | null>(null);
@@ -45,6 +48,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [isPro, setIsPro] = useState(() => readPro());
   const [showPro, setShowPro] = useState(false);
   const [proReason, setProReason] = useState("");
+  const [carbFocus, setCarbFocus] = useState<"tuner" | null>(null);
 
   const setTools = useCallback((next: GarageTool[]) => {
     setToolsState(next);
@@ -104,6 +108,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setShowPro(true);
   }, []);
   const closePro = useCallback(() => setShowPro(false), []);
+  const openCarbTuner = useCallback(() => {
+    setTab("carb");
+    setCarbFocus("tuner");
+  }, []);
+  const clearCarbFocus = useCallback(() => setCarbFocus(null), []);
 
   const value = useMemo(
     () => ({
@@ -124,6 +133,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       openPro,
       closePro,
       proReason,
+      carbFocus,
+      openCarbTuner,
+      clearCarbFocus,
     }),
     [
       tab,
@@ -142,6 +154,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       openPro,
       closePro,
       proReason,
+      carbFocus,
+      openCarbTuner,
+      clearCarbFocus,
     ],
   );
 

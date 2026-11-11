@@ -1,4 +1,4 @@
-const CACHE = "crankit-v1.1.0";
+const CACHE = "crankit-v1.2.0";
 // Scope-relative so this works under /crankit/ on GitHub Pages and under / in local preview if needed.
 const BASE = new URL("./", self.registration.scope).pathname;
 

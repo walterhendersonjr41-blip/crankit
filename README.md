@@ -131,3 +131,10 @@ Reviewed submissions can be copied into `src/data/learnedRules.ts` in a later re
 2. Look for messages whose subject starts with `CrankIt shared fix:`.
 3. Read the anonymous fields in the body (tool type, brand/model, symptom, fix, worked, app version, date). The sender address will be visible; do not copy that address into the app or into `learnedRules.ts`.
 4. If a fix is safe, accurate, and not just a copy of an existing tree, add a curated entry to `src/data/learnedRules.ts`, bump `APP_VERSION` in `src/config/appInfo.ts` (and the `CACHE` name in `public/sw.js` to `crankit-v` + that version), then push to `main`. Users get the new rules on their next open.
+
+
+## Acoustic RPM & Carb Sound Tuner
+
+On the **Carb & Tune** tab, **Listen to My Engine (Live RPM & Tune Check)** estimates RPM on the device from the firing frequency (Hz × 60) using the Web Audio API. Nothing is recorded or uploaded. Detection is band-limited (~25–250 Hz) with autocorrelation and harmonic peak picking, then smoothed. A 2-second full-throttle capture with countdown, a no-mic simulator, and general idle / WOT verdicts are included. Every screw instruction repeats the stamped-letter note.
+
+If My Garage includes a recognized model number, the tuner uses official idle and max/WOT figures from `src/data/modelSpecs.ts` (each entry cites a manufacturer manual or official spec page). Unverified numbers are omitted. Current Craftsman WC215 / CMXGTAMDZ20C manuals do not list RPM, so those fall back to the general ranges plus an optional “max RPM from your manual” field. The Ask Mechanic chip **Listen to my engine** opens the tuner.

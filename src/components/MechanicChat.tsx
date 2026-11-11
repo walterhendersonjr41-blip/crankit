@@ -44,7 +44,7 @@ function newMsgId(): string {
 }
 
 export function MechanicChat() {
-  const { tools, setTab } = useAppState();
+  const { tools, setTab, openCarbTuner } = useAppState();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -116,8 +116,9 @@ export function MechanicChat() {
     void ask(input);
   }
 
-  function followLink(tab: TabId) {
-    setTab(tab);
+  function followLink(tab: TabId, focus?: "tuner") {
+    if (focus === "tuner") openCarbTuner();
+    else setTab(tab);
     setOpen(false);
   }
 
@@ -245,7 +246,7 @@ export function MechanicChat() {
                           <button
                             key={`${m.id}-${link.tab}-${link.label}`}
                             type="button"
-                            onClick={() => followLink(link.tab)}
+                            onClick={() => followLink(link.tab, link.focus)}
                             className="min-h-11 rounded-xl border border-garage-orange/70 px-3 text-left text-sm font-bold text-orange-200"
                           >
                             {link.label}
@@ -353,7 +354,13 @@ export function MechanicChat() {
                   <button
                     key={chip}
                     type="button"
-                    onClick={() => void ask(chip)}
+                    onClick={() => {
+                      void ask(chip);
+                      if (chip === "Listen to my engine") {
+                        openCarbTuner();
+                        setOpen(false);
+                      }
+                    }}
                     disabled={busy}
                     className="min-h-11 shrink-0 rounded-full border border-white/15 bg-white/5 px-3 text-xs font-bold leading-tight text-neutral-100 disabled:opacity-50"
                   >

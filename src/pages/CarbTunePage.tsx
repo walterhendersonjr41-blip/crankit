@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { PartLink } from "../components/PartLink";
 import { Disclaimer } from "../components/Disclaimer";
 import { SafetyNote } from "../components/SafetyNote";
+import { AcousticTuner } from "../components/AcousticTuner";
 import { LIMITER_NOTE, STAMPED_LETTER_NOTE } from "../data/carbNotes";
 
 type ScrewId = "L" | "H" | "T";
@@ -101,6 +102,8 @@ export function CarbTunePage() {
 
       <SafetyNote tone="info">{STAMPED_LETTER_NOTE}</SafetyNote>
       <SafetyNote>{LIMITER_NOTE}</SafetyNote>
+
+      <AcousticTuner />
 
       <div className="grid gap-2">
         {SYMPTOMS.map((s) => (

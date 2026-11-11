@@ -76,6 +76,7 @@ export function GaragePage() {
       sparkPlugType: tool.sparkPlugType,
       chainFileSize: tool.chainFileSize,
       lastTuneDate: tool.lastTuneDate,
+      maxRpm: tool.maxRpm,
       repairNotes: tool.repairNotes,
     });
   }
@@ -306,6 +307,21 @@ export function GaragePage() {
               type="date"
               value={form.lastTuneDate}
               onChange={(e) => setForm({ ...form, lastTuneDate: e.target.value })}
+              className="input"
+            />
+          </Field>
+          <Field label="Max RPM from the manual (optional)">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={3000}
+              max={20000}
+              placeholder="Only if your manual lists it"
+              value={form.maxRpm ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setForm({ ...form, maxRpm: v === "" ? undefined : Number(v) });
+              }}
               className="input"
             />
           </Field>
