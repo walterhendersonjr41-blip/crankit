@@ -5,14 +5,18 @@ import { STAMPED_LETTER_NOTE } from "../data/carbNotes";
 import {
   ELECTRONIC_CARB_NOTE,
   LIMITER_H_NOTE,
+  NEED_MAX_BANNER,
   RANGE_NOTE,
   RpmSmoother,
+  canUseGeneralWot,
   estimateFiring,
   hasElectronicCarb,
+  hasWotAnchor,
   median,
   parseMaxRpm,
   rpmToHz,
   tuneVerdict,
+  type EngineCycle,
   type TuneMode,
   type TuneVerdict,
 } from "../lib/rpmMath";
@@ -31,6 +35,7 @@ function toneClass(tone: TuneVerdict["tone"]): string {
   if (tone === "green") return "border-diy/50 bg-diy/15 text-green-100";
   if (tone === "borderline") return "border-lime-400/40 bg-lime-950/50 text-lime-100";
   if (tone === "yellow") return "border-yellow-400/50 bg-yellow-950/50 text-yellow-100";
+  if (tone === "info") return "border-white/25 bg-black/40 text-neutral-100";
   return "border-shop/60 bg-red-950/50 text-red-100";
 }
 
@@ -51,12 +56,14 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
   const smootherRef = useRef(new RpmSmoother());
   const captureBuf = useRef<number[]>([]);
   const simulateRef = useRef(false);
+  const cycleRef = useRef<EngineCycle>("2-stroke");
 
   const [toolId, setToolId] = useState(tools[0]?.id ?? "");
   const selected = tools.find((t) => t.id === toolId) ?? tools[0];
   const matchedSpec = findModelSpec(selected?.name, selected?.brandModel, selected?.brand);
   const [maxRpmText, setMaxRpmText] = useState(selected?.maxRpm ? String(selected.maxRpm) : "");
   const [mode, setMode] = useState<TuneMode>("idle");
+  const [cycle, setCycle] = useState<EngineCycle>("2-stroke");
   const [listening, setListening] = useState(false);
   const [simulate, setSimulate] = useState(false);
   const [playTone, setPlayTone] = useState(false);
@@ -68,16 +75,26 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
   const [countdown, setCountdown] = useState(0);
   const [heldRpm, setHeldRpm] = useState<number | null>(null);
 
-  const maxRpm = parseMaxRpm(maxRpmText);
+  const maxRpm = parseMaxRpm(maxRpmText, cycle);
   const displayRpm = simulate ? simRpm : phase === "result" && heldRpm != null ? heldRpm : liveRpm;
   const showVerdict = displayRpm != null && (simulate || clear || phase === "result");
-  const verdict = showVerdict && displayRpm != null ? tuneVerdict(displayRpm, mode, maxRpm, matchedSpec) : null;
+  const tuneCtx = { toolType: selected?.toolType, cycle };
+  const verdict = showVerdict && displayRpm != null ? tuneVerdict(displayRpm, mode, maxRpm, matchedSpec, tuneCtx) : null;
+  const needMaxBanner =
+    cycle === "2-stroke" &&
+    mode === "full-throttle" &&
+    !hasWotAnchor(maxRpm, matchedSpec, cycle) &&
+    !canUseGeneralWot(tuneCtx);
   const electronic = hasElectronicCarb(selected) || Boolean(matchedSpec?.noMixtureScrews);
   const highlighted = autoOpen || carbFocus === "tuner";
 
   useEffect(() => {
     simulateRef.current = simulate;
   }, [simulate]);
+
+  useEffect(() => {
+    cycleRef.current = cycle;
+  }, [cycle]);
 
   useEffect(() => {
     const fromTool = selected?.maxRpm;
@@ -169,7 +186,12 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
       drawWave(time);
 
       if (audioRef.current && !simulateRef.current) {
-        const est = estimateFiring(time, ctx.sampleRate, { magnitudes: linear, fftSize: analyser.fftSize });
+        const est = estimateFiring(
+          time,
+          ctx.sampleRate,
+          { magnitudes: linear, fftSize: analyser.fftSize },
+          cycleRef.current,
+        );
         if (est && est.confidence > 0) {
           const smooth = smootherRef.current.push(est.rpm);
           setLiveRpm(smooth);
@@ -229,7 +251,7 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
   }, [simulate, simRpm, playTone]);
 
   function drawSimWave(rpm: number) {
-    const hz = rpmToHz(rpm);
+    const hz = rpmToHz(rpm, cycleRef.current);
     const n = 1024;
     const buf = new Float32Array(n);
     const sr = 44100;
@@ -258,9 +280,9 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
       const gain = ctx.createGain();
       const filter = ctx.createBiquadFilter();
       osc.type = "sawtooth";
-      osc.frequency.value = rpmToHz(rpm);
+      osc.frequency.value = rpmToHz(rpm, cycleRef.current);
       filter.type = "lowpass";
-      filter.frequency.value = Math.min(2000, rpmToHz(rpm) * 8);
+      filter.frequency.value = Math.min(2000, rpmToHz(rpm, cycleRef.current) * 8);
       gain.gain.value = 0.04;
       osc.connect(filter);
       filter.connect(gain);
@@ -287,7 +309,7 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
       if (bag.ctx.state !== "closed") void bag.ctx.close();
       audioRef.current = null;
     }
-    if (bag?.simOsc) bag.simOsc.frequency.value = rpmToHz(simRpm);
+    if (bag?.simOsc) bag.simOsc.frequency.value = rpmToHz(simRpm, cycleRef.current);
     setLiveRpm(simRpm);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playTone, simRpm, simulate]);
@@ -412,7 +434,7 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
             />
           </label>
           <div className="flex flex-wrap gap-2">
-            {[2200, 2800, 3400, 10000, 12000, 13500].map((n) => (
+            {(cycle === "4-stroke" ? [1400, 1800, 2800, 3200, 3600, 4000] : [2200, 2800, 3400, 10000, 12000, 13500]).map((n) => (
               <button
                 key={n}
                 type="button"
@@ -453,12 +475,44 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
         </label>
       )}
 
+      <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Engine type">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={cycle === "2-stroke"}
+          onClick={() => setCycle("2-stroke")}
+          className={`min-h-12 rounded-xl border px-3 text-sm font-black ${
+            cycle === "2-stroke" ? "border-garage-orange bg-garage-orange text-black" : "border-white/15 bg-white/5"
+          }`}
+        >
+          2-stroke
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={cycle === "4-stroke"}
+          onClick={() => setCycle("4-stroke")}
+          className={`min-h-12 rounded-xl border px-3 text-sm font-black ${
+            cycle === "4-stroke" ? "border-garage-orange bg-garage-orange text-black" : "border-white/15 bg-white/5"
+          }`}
+        >
+          4-stroke
+        </button>
+      </div>
+      <p className="text-xs leading-relaxed text-neutral-400">
+        {cycle === "4-stroke"
+          ? "4-stroke mode is for mowers, generators, and pressure washers. RPM = firing Hz × 120. No H-screw mixture advice — we only compare RPM to a governed speed you enter from the manual."
+          : "2-stroke mode is for chainsaws, trimmers, and blowers. RPM = firing Hz × 60."}
+      </p>
+
       <label className="block text-sm font-semibold text-neutral-300">
-        My tool’s max RPM (from the manual, optional)
+        {cycle === "4-stroke"
+          ? "Governed / max RPM from the manual (optional)"
+          : "My tool’s max RPM (from the manual, optional)"}
         <input
           type="number"
           inputMode="numeric"
-          min={3000}
+          min={cycle === "4-stroke" ? 1000 : 3000}
           max={20000}
           placeholder="Only if your manual lists it"
           value={maxRpmText}
@@ -499,6 +553,12 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
           Full Throttle Test
         </button>
       </div>
+
+      {needMaxBanner && (
+        <p className="rounded-xl border border-yellow-400/40 bg-yellow-950/40 px-3 py-2 text-sm leading-relaxed text-yellow-100">
+          {NEED_MAX_BANNER}
+        </p>
+      )}
 
       {(listening || simulate) && (
         <div className="space-y-3">
@@ -547,10 +607,21 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
         </div>
       )}
 
-      {electronic && <SafetyNote>{matchedSpec?.noMixtureScrewsNote || ELECTRONIC_CARB_NOTE}</SafetyNote>}
-      <SafetyNote tone="info">{RANGE_NOTE}</SafetyNote>
-      <SafetyNote tone="info">{LIMITER_H_NOTE}</SafetyNote>
-      <SafetyNote tone="info">{STAMPED_LETTER_NOTE}</SafetyNote>
+      {electronic && cycle === "2-stroke" && (
+        <SafetyNote>{matchedSpec?.noMixtureScrewsNote || ELECTRONIC_CARB_NOTE}</SafetyNote>
+      )}
+      {cycle === "2-stroke" ? (
+        <>
+          <SafetyNote tone="info">{RANGE_NOTE}</SafetyNote>
+          <SafetyNote tone="info">{LIMITER_H_NOTE}</SafetyNote>
+          <SafetyNote tone="info">{STAMPED_LETTER_NOTE}</SafetyNote>
+        </>
+      ) : (
+        <SafetyNote tone="info">
+          4-stroke RPM is firing Hz × 120. Compare it to the governed speed in your manual. This mode does not give
+          H-screw mixture advice, and no audio is recorded or uploaded.
+        </SafetyNote>
+      )}
       <FixedItButton
         source="tuner"
         tools={tools}
@@ -573,7 +644,17 @@ function RpmGauge({ rpm, verdict }: { rpm: number | null; verdict: TuneVerdict |
   const nx = cx + r * Math.cos(angle);
   const ny = cy - r * Math.sin(angle);
   const color =
-    verdict?.tone === "red" ? "#EF4444" : verdict?.tone === "yellow" ? "#FBBF24" : verdict?.tone === "borderline" ? "#A3E635" : verdict?.tone === "green" ? "#22C55E" : "#FF6B00";
+    verdict?.tone === "red"
+      ? "#EF4444"
+      : verdict?.tone === "yellow"
+        ? "#FBBF24"
+        : verdict?.tone === "borderline"
+          ? "#A3E635"
+          : verdict?.tone === "green"
+            ? "#22C55E"
+            : verdict?.tone === "info"
+              ? "#A3A3A3"
+              : "#FF6B00";
   return (
     <svg viewBox="0 0 320 150" className="mx-auto w-full max-w-sm" role="img" aria-label="RPM gauge">
       <path d="M24 120 A136 136 0 0 1 296 120" fill="none" stroke="#222" strokeWidth="18" strokeLinecap="round" />

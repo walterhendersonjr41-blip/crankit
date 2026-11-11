@@ -7,7 +7,13 @@ export const MIN_FIRING_HZ = 25;
 export const MAX_FIRING_HZ = 250;
 
 export const RANGE_NOTE =
-  "Ranges are general. Your manual's idle and max RPM win. Phone mics can misread—confirm with a tach if unsure. Many carbs have limiter caps; never force a screw.";
+  "Idle ranges are general for 2-stroke tools — your manual's idle RPM wins if it lists one. The general full-throttle band (about 11,000–12,800 RPM) is for chainsaws only. For trimmers, blowers, and unknown tools, enter your manual's max RPM or pick a verified model before any H-screw advice. Phone mics can misread—confirm with a tach if unsure. Many carbs have limiter caps; never force a screw.";
+
+export const NEED_MAX_BANNER =
+  "Enter your manual's max RPM (or pick your model) to get a safe H-screw verdict.";
+
+export const MANUAL_IDLE_NOTE =
+  "These idle ranges are general — your manual's idle RPM wins if it lists one.";
 
 export const LIMITER_H_NOTE =
   "On many EPA and limiter-cap carbs, the stamped H (and L) screws only move a fraction of a turn. Do not pry a cap off just to chase a number. If H barely turns, check the air filter and the muffler spark-arrestor first, then follow the manual.";
@@ -16,7 +22,13 @@ export const ELECTRONIC_CARB_NOTE =
   "This tool may have no user mixture screws — for example STIHL M-Tronic or Husqvarna AutoTune. Use the RPM reading as a check only. Do not force or look for screws that are not there. Check your manual.";
 
 export type TuneMode = "idle" | "full-throttle";
-export type VerdictTone = "green" | "borderline" | "yellow" | "red";
+export type EngineCycle = "2-stroke" | "4-stroke";
+export type VerdictTone = "green" | "borderline" | "yellow" | "red" | "info";
+
+export type TuneContext = {
+  toolType?: string;
+  cycle?: EngineCycle;
+};
 
 export type TuneVerdict = {
   tone: VerdictTone;
@@ -26,12 +38,33 @@ export type TuneVerdict = {
   isTuningInstruction: boolean;
 };
 
-export function hzToRpm(hz: number): number {
-  return hz * 60;
+export function hzToRpm(hz: number, cycle: EngineCycle = "2-stroke"): number {
+  return hz * (cycle === "4-stroke" ? 120 : 60);
 }
 
-export function rpmToHz(rpm: number): number {
-  return rpm / 60;
+export function rpmToHz(rpm: number, cycle: EngineCycle = "2-stroke"): number {
+  return rpm / (cycle === "4-stroke" ? 120 : 60);
+}
+
+/** 2-stroke: 25–250 Hz (1,500–15,000 RPM). 4-stroke: 8–80 Hz (960–9,600 RPM). */
+export function firingBand(cycle: EngineCycle = "2-stroke"): { minHz: number; maxHz: number } {
+  if (cycle === "4-stroke") return { minHz: 8, maxHz: 80 };
+  return { minHz: MIN_FIRING_HZ, maxHz: MAX_FIRING_HZ };
+}
+
+export function isChainsawTool(toolType?: string): boolean {
+  return toolType === "chainsaw";
+}
+
+/** General 11,000–13,200 WOT bands are chainsaw-only, and never used in 4-stroke mode. */
+export function canUseGeneralWot(ctx?: TuneContext): boolean {
+  if ((ctx?.cycle ?? "2-stroke") === "4-stroke") return false;
+  return isChainsawTool(ctx?.toolType);
+}
+
+export function hasWotAnchor(maxRpm?: number, spec?: ModelSpec, cycle: EngineCycle = "2-stroke"): boolean {
+  if (parseMaxRpm(maxRpm, cycle) != null) return true;
+  return cycle === "2-stroke" && hasOfficialMax(spec);
 }
 
 export function median(values: number[]): number {
@@ -208,9 +241,9 @@ export function estimateFiring(
   timeDomain: ArrayLike<number>,
   sampleRate: number,
   spectrum?: { magnitudes: ArrayLike<number>; fftSize: number },
-  minHz = MIN_FIRING_HZ,
-  maxHz = MAX_FIRING_HZ,
+  cycle: EngineCycle = "2-stroke",
 ): FiringEstimate | null {
+  const { minHz, maxHz } = firingBand(cycle);
   const ac = firingHzFromAutocorr(timeDomain, sampleRate, minHz, maxHz);
   const fft = spectrum
     ? firingHzFromSpectrum(spectrum.magnitudes, sampleRate, spectrum.fftSize, minHz, maxHz)
@@ -221,10 +254,10 @@ export function estimateFiring(
     // Autocorr is the primary estimator. Spectrum scores (peak/mean) are on a
     // different scale, so only blend when the two agree; otherwise keep autocorr.
     const hz = close ? ac.hz * 0.7 + fft.hz * 0.3 : ac.hz;
-    return { hz, rpm: hzToRpm(hz), confidence: close ? Math.max(ac.score, 0.5) : ac.score * 0.85 };
+    return { hz, rpm: hzToRpm(hz, cycle), confidence: close ? Math.max(ac.score, 0.5) : ac.score * 0.85 };
   }
   const hit = ac ?? fft!;
-  return { hz: hit.hz, rpm: hzToRpm(hit.hz), confidence: hit.score };
+  return { hz: hit.hz, rpm: hzToRpm(hit.hz, cycle), confidence: hit.score };
 }
 
 export class RpmSmoother {
@@ -255,10 +288,14 @@ function withLetterNote(text: string, include: boolean): string {
   return include ? `${text} ${STAMPED_LETTER_NOTE}` : text;
 }
 
-export function parseMaxRpm(raw: string | number | undefined | null): number | undefined {
+export function parseMaxRpm(
+  raw: string | number | undefined | null,
+  cycle: EngineCycle = "2-stroke",
+): number | undefined {
   if (raw == null || raw === "") return undefined;
   const n = typeof raw === "number" ? raw : Number(String(raw).replace(/[, ]/g, ""));
-  if (!Number.isFinite(n) || n < 3000 || n > 20000) return undefined;
+  const min = cycle === "4-stroke" ? 1000 : 3000;
+  if (!Number.isFinite(n) || n < min || n > 20000) return undefined;
   return n;
 }
 
@@ -277,8 +314,14 @@ export function idleBand(spec: ModelSpec): { low: number; high: number; borderli
   return undefined;
 }
 
-export function tuneVerdict(rpm: number, mode: TuneMode, maxRpm?: number, spec?: ModelSpec): TuneVerdict {
+export function tuneVerdict(rpm: number, mode: TuneMode, maxRpm?: number, spec?: ModelSpec, ctx?: TuneContext): TuneVerdict {
   const rounded = Math.round(rpm);
+  const cycle: EngineCycle = ctx?.cycle ?? "2-stroke";
+
+  if (cycle === "4-stroke") {
+    return fourStrokeVerdict(rounded, mode, maxRpm);
+  }
+
   if (mode === "idle") {
     const band = spec && hasOfficialIdle(spec) ? idleBand(spec) : undefined;
     if (band) {
@@ -320,10 +363,7 @@ export function tuneVerdict(rpm: number, mode: TuneMode, maxRpm?: number, spec?:
       return {
         tone: "yellow",
         title: "Idle Too Low (Risk of Stalling)",
-        body: withLetterNote(
-          "Turn the stamped T / LA screw 1/8 turn CLOCKWISE.",
-          true,
-        ),
+        body: withLetterNote("Turn the stamped T / LA screw 1/8 turn CLOCKWISE.", true) + " " + MANUAL_IDLE_NOTE,
         isTuningInstruction: true,
       };
     }
@@ -331,7 +371,7 @@ export function tuneVerdict(rpm: number, mode: TuneMode, maxRpm?: number, spec?:
       return {
         tone: "green",
         title: "Idle Locked In",
-        body: "Chain/head should be completely still.",
+        body: "Chain/head should be completely still. " + MANUAL_IDLE_NOTE,
         isTuningInstruction: false,
       };
     }
@@ -339,17 +379,20 @@ export function tuneVerdict(rpm: number, mode: TuneMode, maxRpm?: number, spec?:
       return {
         tone: "borderline",
         title: "Idle on the high side — borderline OK",
-        body: withLetterNote(
-          "Still in a borderline OK range. Confirm the chain or head is completely still. If it creeps, turn the stamped T / LA screw slightly COUNTER-CLOCKWISE.",
-          true,
-        ),
+        body:
+          withLetterNote(
+            "Still in a borderline OK range. Confirm the chain or head is completely still. If it creeps, turn the stamped T / LA screw slightly COUNTER-CLOCKWISE.",
+            true,
+          ) +
+          " " +
+          MANUAL_IDLE_NOTE,
         isTuningInstruction: true,
       };
     }
     return {
       tone: "red",
       title: "Idle Too High (Chain/Head Spinning Risk)",
-      body: withLetterNote("Turn the stamped T / LA screw 1/4 turn COUNTER-CLOCKWISE.", true),
+      body: withLetterNote("Turn the stamped T / LA screw 1/4 turn COUNTER-CLOCKWISE.", true) + " " + MANUAL_IDLE_NOTE,
       isTuningInstruction: true,
     };
   }
@@ -434,6 +477,15 @@ export function tuneVerdict(rpm: number, mode: TuneMode, maxRpm?: number, spec?:
     };
   }
 
+  if (!canUseGeneralWot(ctx)) {
+    return {
+      tone: "info",
+      title: "RPM only — no H-screw verdict yet",
+      body: NEED_MAX_BANNER,
+      isTuningInstruction: false,
+    };
+  }
+
   if (rounded < 11000) {
     return {
       tone: "yellow",
@@ -449,7 +501,7 @@ export function tuneVerdict(rpm: number, mode: TuneMode, maxRpm?: number, spec?:
     return {
       tone: "green",
       title: "Sweet Spot! Healthy 4-stroking burble under no load — safe to cut.",
-      body: "This is a general no-load range. Confirm against your manual before you cut.",
+      body: "This is a general chainsaw no-load range. Confirm against your manual before you cut.",
       isTuningInstruction: false,
     };
   }
@@ -472,6 +524,44 @@ export function tuneVerdict(rpm: number, mode: TuneMode, maxRpm?: number, spec?:
       true,
     ),
     isTuningInstruction: true,
+  };
+}
+
+function fourStrokeVerdict(rounded: number, mode: TuneMode, maxRpm?: number): TuneVerdict {
+  const governed = parseMaxRpm(maxRpm, "4-stroke");
+  if (mode === "full-throttle" && governed != null) {
+    if (rounded > governed) {
+      return {
+        tone: "red",
+        title: "Above the governed / max speed from your manual",
+        body: `This 4-stroke reading is above the governed or max speed you entered (${governed.toLocaleString()} RPM). Let off the throttle and confirm the governor. There is no 2-stroke H-screw mixture advice in 4-stroke mode.`,
+        isTuningInstruction: false,
+      };
+    }
+    if (rounded >= governed - 200) {
+      return {
+        tone: "green",
+        title: "At or near the governed speed from your manual",
+        body: `Within about 200 RPM of the governed / max speed you entered (${governed.toLocaleString()} RPM). No H-screw advice in 4-stroke mode.`,
+        isTuningInstruction: false,
+      };
+    }
+    return {
+      tone: "info",
+      title: "Below the governed speed from your manual",
+      body: `This reading is below the governed / max speed you entered (${governed.toLocaleString()} RPM). Confirm in the manual. No H-screw advice in 4-stroke mode.`,
+      isTuningInstruction: false,
+    };
+  }
+  return {
+    tone: "info",
+    title: mode === "idle" ? "4-stroke idle RPM" : "4-stroke RPM",
+    body:
+      "RPM is estimated as firing Hz × 120 for 4-stroke mowers, generators, and pressure washers. " +
+      (governed == null
+        ? "Enter your manual's governed / max speed to compare. No H-screw advice in 4-stroke mode."
+        : `Idle is shown only as a reading — compare it to your manual. Governed / max entered: ${governed.toLocaleString()} RPM. No H-screw advice in 4-stroke mode.`),
+    isTuningInstruction: false,
   };
 }
 

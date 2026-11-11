@@ -139,6 +139,8 @@ On the **Carb & Tune** tab, **Listen to My Engine (Live RPM & Tune Check)** esti
 
 If My Garage includes a recognized model number, the tuner uses official idle and max/WOT figures from `src/data/modelSpecs.ts` (each entry cites a manufacturer manual or official spec page). Unverified numbers are omitted. Current Craftsman WC215 / CMXGTAMDZ20C manuals do not list RPM, so those fall back to the general ranges plus an optional “max RPM from your manual” field. The Ask Mechanic chip **Listen to my engine** opens the tuner.
 
+The general full-throttle band (about 11,000–12,800 RPM) is for **chainsaws** only. Trimmers, blowers, and unknown tools with no official model spec and no manual max RPM show the measured RPM but no H-screw tip, with a prompt to enter the manual’s max or pick a model. Idle ranges stay general for all 2-stroke types, and the manual’s idle wins when listed. A **2-stroke / 4-stroke** switch is available for mowers, generators, and pressure washers (4-stroke RPM = firing Hz × 120) and never gives H-screw advice — only a comparison to a governed speed if you enter one.
+
 
 ## My Wins (FIXED IT!)
 
