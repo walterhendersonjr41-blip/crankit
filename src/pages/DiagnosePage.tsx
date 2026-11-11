@@ -1,14 +1,16 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 import { StatusBadge } from "../components/Badge";
 import { Disclaimer } from "../components/Disclaimer";
 import { PartLinkList } from "../components/PartLink";
 import { SafetyNote } from "../components/SafetyNote";
 import { STAMPED_LETTER_NOTE, TOOL_TYPES, TREES, type DiagStep, type DiagTree, type ToolType } from "../data/diagnostics";
-import { recordDiagnoseFixed } from "../lib/mechanicLearning";
 import { anonymousBrandModel } from "../lib/shareFix";
 import type { GarageTool } from "../lib/storage";
+import { FixedItButton } from "../components/FixedItButton";
 import { ShareFixButton } from "../components/ShareFixButton";
+import type { RepairWin } from "../lib/wins";
+import { loadWins } from "../lib/wins";
 import { useAppState } from "../state";
 
 type Stage = "tool" | "tree" | "step" | "done";
@@ -29,6 +31,7 @@ export function DiagnosePage() {
   const [done, setDone] = useState<DoneState | null>(null);
   const [logToolId, setLogToolId] = useState(tools[0]?.id ?? "");
   const [savedMsg, setSavedMsg] = useState("");
+  const [lastWin, setLastWin] = useState<RepairWin | null>(null);
 
   const step: DiagStep | null = tree ? tree.steps[stepIndex] ?? null : null;
   const matchingTools = useMemo(
@@ -43,6 +46,7 @@ export function DiagnosePage() {
     setStepIndex(0);
     setDone(null);
     setSavedMsg("");
+    setLastWin(null);
   }
 
   function pickTree(next: DiagTree) {
@@ -50,6 +54,7 @@ export function DiagnosePage() {
     setStepIndex(0);
     setDone(null);
     setSavedMsg("");
+    setLastWin(null);
     setStage("step");
   }
 
@@ -88,27 +93,22 @@ export function DiagnosePage() {
     return true;
   }
 
-  function onFixed() {
+  function onFixedWin(winId: string) {
     if (!tree || !step) return;
-    record("fixed", "Marked fixed");
-    const tool = currentTool();
-    recordDiagnoseFixed({
-      toolId: tool?.id,
-      toolName: tool?.name,
-      treeId: tree.id,
-      treeTitle: tree.title,
-      stepId: step.id,
-      stepTitle: step.title,
-    });
-    const saved = appendGarageNote(`${tree.shortTitle}: fixed at "${step.title}"`);
+    const win = loadWins().find((w) => w.id === winId) ?? null;
+    setLastWin(win);
+    record("fixed", win?.fix ?? "Marked fixed");
+    const saved = appendGarageNote(
+      `${tree.shortTitle}: fixed — ${win?.fix || step.title}`,
+    );
     setDone({
       kind: "fixed",
       title: "Nice — log it and get back to work",
       body: saved
-        ? `Saved to ${currentTool()?.name ?? "your garage"} and the diagnostic history.`
-        : "Saved to diagnostic history. Add a tool in My Garage if you want this attached to a machine.",
+        ? `Saved to My Wins, ${currentTool()?.name ?? "your garage"}, and the diagnostic history.`
+        : "Saved to My Wins and diagnostic history. Add a tool in My Garage if you want this attached to a machine.",
     });
-    setSavedMsg(saved ? "Saved to garage log." : "Saved to history (no garage tool yet).");
+    setSavedMsg(saved ? "Saved to My Wins and the garage log." : "Saved to My Wins and history (no garage tool yet).");
     setStage("done");
   }
 
@@ -285,25 +285,27 @@ export function DiagnosePage() {
                   {opt.label}
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={onFixed}
-                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-diy px-4 py-3 text-sm font-black text-black"
-              >
-                <CheckCircle2 className="h-5 w-5" aria-hidden />
-                FIXED IT! (Save to Garage Log)
-              </button>
+              <FixedItButton
+                source="diagnose"
+                tools={tools}
+                tool={currentTool()}
+                toolType={toolType ?? currentTool()?.toolType}
+                symptom={tree.title}
+                fix={step.title}
+                onSaved={onFixedWin}
+              />
             </div>
           ) : (
             <div className="grid gap-2">
-              <button
-                type="button"
-                onClick={onFixed}
-                className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-diy px-4 py-3 text-sm font-black text-black"
-              >
-                <CheckCircle2 className="h-5 w-5" aria-hidden />
-                FIXED IT! (Save to Garage Log)
-              </button>
+              <FixedItButton
+                source="diagnose"
+                tools={tools}
+                tool={currentTool()}
+                toolType={toolType ?? currentTool()?.toolType}
+                symptom={tree.title}
+                fix={step.title}
+                onSaved={onFixedWin}
+              />
               <button
                 type="button"
                 onClick={onStillBroken}
@@ -331,11 +333,14 @@ export function DiagnosePage() {
             {done.hint && <p className="text-sm text-neutral-400">{done.hint}</p>}
             {done.kind === "fixed" && step && (
               <ShareFixButton
+                label="Share this win"
                 input={{
-                  toolType: toolType ?? currentTool()?.toolType,
-                  brandModel: anonymousBrandModel(currentTool()),
-                  symptom: tree.title,
-                  fix: step.title,
+                  toolType: lastWin?.toolType ?? toolType ?? currentTool()?.toolType,
+                  brandModel: lastWin
+                    ? [lastWin.make, lastWin.model].filter(Boolean).join(" ")
+                    : anonymousBrandModel(currentTool()),
+                  symptom: lastWin?.symptom ?? tree.title,
+                  fix: lastWin?.fix ?? step.title,
                   worked: "yes",
                 }}
               />

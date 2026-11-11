@@ -138,3 +138,8 @@ Reviewed submissions can be copied into `src/data/learnedRules.ts` in a later re
 On the **Carb & Tune** tab, **Listen to My Engine (Live RPM & Tune Check)** estimates RPM on the device from the firing frequency (Hz × 60) using the Web Audio API. Nothing is recorded or uploaded. Detection is band-limited (~25–250 Hz) with autocorrelation and harmonic peak picking, then smoothed. A 2-second full-throttle capture with countdown, a no-mic simulator, and general idle / WOT verdicts are included. Every screw instruction repeats the stamped-letter note.
 
 If My Garage includes a recognized model number, the tuner uses official idle and max/WOT figures from `src/data/modelSpecs.ts` (each entry cites a manufacturer manual or official spec page). Unverified numbers are omitted. Current Craftsman WC215 / CMXGTAMDZ20C manuals do not list RPM, so those fall back to the general ranges plus an optional “max RPM from your manual” field. The Ask Mechanic chip **Listen to my engine** opens the tuner.
+
+
+## My Wins (FIXED IT!)
+
+A **FIXED IT!** button at the end of Diagnose guides, Ask Mechanic answers, and the sound tuner opens a short form: make, model (prefilled from My Garage when possible), symptom, what actually fixed it, part cost, and estimated shop cost saved. Wins stay on this device under **My Wins** in My Garage, with a running total of dollars saved, and they feed the local learning engine. Optional **Share this win** reuses the anonymous `mailto:` to `waltinvents@agentmail.to` (subject `CrankIt shared fix:`). Tuner audio is never stored with a win.

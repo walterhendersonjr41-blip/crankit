@@ -1,2 +1,2 @@
 /** Bump this when shipping reviewed community fixes so the service worker cache name can match. */
-export const APP_VERSION = "1.2.0";
+export const APP_VERSION = "1.3.0";

@@ -1,7 +1,7 @@
 import { hasMechanicSync, mechanicSync } from "../config/mechanicSync";
 import { STORAGE_KEYS, newId } from "./storage";
 
-export type LearningSource = "diagnose-fixed" | "bot-rating" | "user-tip";
+export type LearningSource = "diagnose-fixed" | "bot-rating" | "user-tip" | "win";
 
 export type LearningEvent = {
   id: string;

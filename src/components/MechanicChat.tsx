@@ -4,6 +4,7 @@ import { getMechanicReply } from "../lib/mechanicClient";
 import { QUICK_CHIPS, buildGreeting, type MechanicIntent, type MechanicLink } from "../lib/mechanicEngine";
 import { addUserTip, clearLearning, recordBotRating } from "../lib/mechanicLearning";
 import { anonymousBrandModel } from "../lib/shareFix";
+import { FixedItButton } from "./FixedItButton";
 import { ShareFixButton } from "./ShareFixButton";
 import { STORAGE_KEYS } from "../lib/storage";
 import { useAppState, type TabId } from "../state";
@@ -232,7 +233,7 @@ export function MechanicChat() {
             )}
 
             <div ref={listRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
-              {messages.map((m) => (
+              {messages.map((m, i) => (
                 <div key={m.id} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
                   <div
                     className={`max-w-[90%] whitespace-pre-wrap rounded-2xl px-3 py-3 text-sm leading-relaxed ${
@@ -276,6 +277,22 @@ export function MechanicChat() {
                         >
                           Didn't help
                         </button>
+                      </div>
+                    )}
+                    {m.role === "assistant" && m.intent && m.intent !== "greeting" && (
+                      <div className="mt-3">
+                        <FixedItButton
+                          source="mechanic"
+                          tools={tools}
+                          tool={selected}
+                          toolType={selected?.toolType}
+                          symptom={
+                            messages[i - 1]?.role === "user"
+                              ? messages[i - 1].text
+                              : m.intent
+                          }
+                          fix=""
+                        />
                       </div>
                     )}
                     {m.role === "assistant" && m.rating === "helpful" && (

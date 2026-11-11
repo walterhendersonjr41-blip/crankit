@@ -8,6 +8,7 @@ import { daysRemaining } from "../lib/fuel";
 import { FREE_GARAGE_TOOL_LIMIT } from "../config/monetization";
 import { buildSampleFleet, newId, type GarageTool, type MixRatio } from "../lib/storage";
 import { useAppState } from "../state";
+import { deleteWin, formatMoney, totalPartCost, totalSaved, totalShopSaved, useWins } from "../lib/wins";
 
 const FILE_SIZES: GarageTool["chainFileSize"][] = ["5/32\"", "3/16\"", "7/32\"", "n/a"];
 const RATIOS: MixRatio[] = ["50:1", "40:1", "32:1", "other"];
@@ -26,6 +27,7 @@ const EMPTY: Omit<GarageTool, "id" | "createdAt"> = {
 
 export function GaragePage() {
   const { tools, setTools, batches, history, isPro, openPro } = useAppState();
+  const wins = useWins();
   const [editing, setEditing] = useState<GarageTool | null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState(EMPTY);
@@ -403,6 +405,48 @@ export function GaragePage() {
           </article>
         ))}
       </div>
+
+
+      <section className="space-y-3 rounded-2xl border border-diy/30 bg-garage-card p-4">
+        <h3 className="font-black">My Wins</h3>
+        <p className="text-sm text-neutral-400">
+          Driveway fixes you logged with FIXED IT! Totals stay on this device.
+        </p>
+        <p className="text-2xl font-black text-green-100">
+          {formatMoney(totalSaved(wins))} saved
+        </p>
+        <p className="text-xs text-neutral-400">
+          Shop quotes avoided {formatMoney(totalShopSaved(wins))}
+          {totalPartCost(wins) > 0 ? ` · parts spent ${formatMoney(totalPartCost(wins))}` : ""}. {wins.length}{" "}
+          {wins.length === 1 ? "win" : "wins"}.
+        </p>
+        {wins.length === 0 ? (
+          <p className="text-sm text-neutral-500">No wins yet. Tap FIXED IT! at the end of a guide, Ask Mechanic answer, or the sound tuner.</p>
+        ) : (
+          <ul className="space-y-3">
+            {wins.map((w) => (
+              <li key={w.id} className="rounded-xl border border-white/10 bg-black/30 p-3">
+                <p className="text-sm font-bold text-white">
+                  {[w.make, w.model].filter(Boolean).join(" ") || w.toolName || "Unnamed tool"}
+                </p>
+                <p className="text-sm text-neutral-200">{w.symptom}</p>
+                <p className="text-sm text-green-100">Fixed with: {w.fix}</p>
+                <p className="mt-1 text-xs text-neutral-400">
+                  {new Date(w.at).toLocaleString()} · shop saved {formatMoney(w.shopCostSaved)}
+                  {w.partCost > 0 ? ` · parts ${formatMoney(w.partCost)}` : ""}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => deleteWin(w.id)}
+                  className="mt-2 min-h-11 text-xs font-bold text-neutral-400"
+                >
+                  Remove this win
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className="space-y-3 rounded-2xl border border-white/10 bg-garage-card p-4">
         <h3 className="font-black">Pro shop paperwork</h3>

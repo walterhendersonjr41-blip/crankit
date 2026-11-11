@@ -4,7 +4,7 @@ import { buildSharedFix, submitSharedFix, type SharedFixInput } from "../lib/sha
 export const SHARE_CONSENT =
   "This opens a prefilled email with only an anonymous symptom, fix, tool type, and brand/model — no name or device ID. Your email app’s sender address will be visible to us.";
 
-export function ShareFixButton({ input }: { input: SharedFixInput }) {
+export function ShareFixButton({ input, label = "Share this fix with CrankIt" }: { input: SharedFixInput; label?: string }) {
   const [phase, setPhase] = useState<"idle" | "confirm" | "sending" | "sent" | "error">("idle");
   const [honeypot, setHoneypot] = useState("");
 
@@ -67,7 +67,7 @@ export function ShareFixButton({ input }: { input: SharedFixInput }) {
       onClick={() => setPhase("confirm")}
       className="min-h-11 rounded-xl border border-white/20 px-3 text-xs font-bold text-orange-200"
     >
-      Share this fix with CrankIt
+      {label}
     </button>
   );
 }

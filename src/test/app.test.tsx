@@ -46,6 +46,7 @@ describe("CrankIt app", () => {
     expect(screen.getByText(/Simulated RPM/i)).toBeInTheDocument();
     expect(screen.getByText(/Idle Locked In/i)).toBeInTheDocument();
     expect(screen.getByText(/audio is analyzed in the browser and is never recorded/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^FIXED IT!$/i })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Bogs at full throttle" }));
     expect(screen.getAllByText(/1\/8 turn counter-clockwise/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Screw-head identifier/i)).toBeInTheDocument();
@@ -151,8 +152,12 @@ describe("CrankIt app", () => {
     await userEvent.click(screen.getByRole("button", { name: "Chainsaw" }));
     await userEvent.click(screen.getByRole("button", { name: /Won't start at all/i }));
     await userEvent.click(screen.getByRole("button", { name: /FIXED IT/i }));
-    expect(screen.getByRole("button", { name: "Share this fix with CrankIt" })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Share this fix with CrankIt" }));
+    expect(screen.getByText(/Log this win/i)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/^Part cost$/i), "12");
+    await userEvent.type(screen.getByLabelText(/Estimated shop cost saved/i), "150");
+    await userEvent.click(screen.getByRole("button", { name: /Save to My Wins/i }));
+    expect(screen.getByRole("button", { name: "Share this win" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Share this win" }));
     expect(screen.getByText(SHARE_CONSENT)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Confirm share" }));
     expect(await screen.findByText(/Your email app should open with the anonymous fields/i)).toBeInTheDocument();
@@ -160,6 +165,11 @@ describe("CrankIt app", () => {
     const opened = decodeURIComponent(clicks.find((h) => h.includes("mailto:")) ?? "");
     expect(opened).toContain("worked: yes");
     expect(opened).toContain("toolType: chainsaw");
+    expect(opened).toMatch(/subject=.*CrankIt shared fix:/i);
+
+    await openTab("My Garage");
+    expect(screen.getByRole("heading", { name: "My Wins" })).toBeInTheDocument();
+    expect(screen.getByText(/\$138\.00 saved/)).toBeInTheDocument();
   });
 
   it("renders the privacy page at /crankit/privacy", () => {

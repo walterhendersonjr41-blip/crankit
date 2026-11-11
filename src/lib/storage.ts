@@ -8,6 +8,7 @@ export const STORAGE_KEYS = {
   chat: "crankit.mechanicChat",
   learning: "crankit.mechanicLearning",
   tips: "crankit.mechanicTips",
+  wins: "crankit.wins",
 } as const;
 
 export type MixRatio = RatioId | "other";

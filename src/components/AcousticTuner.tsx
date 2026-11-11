@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { FixedItButton } from "./FixedItButton";
 import { SafetyNote } from "./SafetyNote";
 import { STAMPED_LETTER_NOTE } from "../data/carbNotes";
 import {
@@ -550,6 +551,14 @@ export function AcousticTuner({ autoOpen = false }: { autoOpen?: boolean }) {
       <SafetyNote tone="info">{RANGE_NOTE}</SafetyNote>
       <SafetyNote tone="info">{LIMITER_H_NOTE}</SafetyNote>
       <SafetyNote tone="info">{STAMPED_LETTER_NOTE}</SafetyNote>
+      <FixedItButton
+        source="tuner"
+        tools={tools}
+        tool={selected}
+        toolType={selected?.toolType}
+        symptom="Carb / RPM tune"
+        fix=""
+      />
     </section>
   );
 }
