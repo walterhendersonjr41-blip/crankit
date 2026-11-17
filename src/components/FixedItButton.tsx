@@ -11,6 +11,7 @@ export function FixedItButton({
   tool,
   toolType,
   symptom = "",
+  testDone = "",
   fix = "",
   onSaved,
 }: {
@@ -19,6 +20,7 @@ export function FixedItButton({
   tool?: GarageTool;
   toolType?: string;
   symptom?: string;
+  testDone?: string;
   fix?: string;
   onSaved?: (id: string) => void;
 }) {
@@ -112,6 +114,7 @@ export function FixedItButton({
             toolType: toolType ?? selected?.toolType,
             brandModel: [make, model].filter(Boolean).join(" "),
             symptom: symptomText,
+            testDone,
             fix: fixText,
             worked: "yes",
           }}

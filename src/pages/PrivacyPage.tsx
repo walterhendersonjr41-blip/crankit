@@ -15,10 +15,13 @@ export function PrivacyPage() {
           <p className="text-sm leading-relaxed text-neutral-300">
             My Garage tools, fuel batches, diagnostic history, Tool History (health checks, Health Score, and optional
             custom / engine-swap notes), My Wins (FIXED IT! logs with part and shop-cost figures),
+            What fixed it results (symptom, test done, fix tried, and whether it ran), optional engine-number logs
+            (compression, WOT RPM, plug color, hours, and notes),
             chat, local learning (FIXED IT results, ratings, tips, and wins), and a Pro unlock flag stay in this
             browser’s localStorage. That data is not sent to a
             CrankIt server. Use Reset learning in Ask Mechanic to clear learning, or clear this site’s data in your
             browser to wipe everything stored here. A copied or printed Tool history report has no owner name, email, or phone.
+            A What fixed it export stays on this device until you move the file.
           </p>
         </section>
         <section className="space-y-2">
@@ -26,7 +29,7 @@ export function PrivacyPage() {
           <p className="text-sm leading-relaxed text-neutral-300">
             The “Share this fix with CrankIt” and “Share this win” buttons are optional. After you see a one-line consent note and confirm,
             your email app opens a prefilled message that includes only: tool type, brand/model if you entered one,
-            symptom, fix, whether it worked, app version, and date. The message body does not include your name, phone,
+            symptom, test done if you entered one, fix, whether it ran (yes / no / partly), app version, and date. The message body does not include your name, phone,
             garage tool nickname, IP address, or a device ID.
           </p>
           <p className="text-sm leading-relaxed text-neutral-300">

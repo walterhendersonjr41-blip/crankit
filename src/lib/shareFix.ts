@@ -1,5 +1,6 @@
 import { APP_VERSION } from "../config/appInfo";
 import { brandForTool } from "../data/brands";
+import type { RanResult } from "./fixOutcomes";
 
 /** House inbox used for opt-in shared fixes. No new account is required. */
 export const SHARE_INBOX = "waltinvents@agentmail.to";
@@ -8,6 +9,7 @@ export const SHARED_FIX_FIELDS = [
   "toolType",
   "brandModel",
   "symptom",
+  "testDone",
   "fix",
   "worked",
   "appVersion",
@@ -18,8 +20,9 @@ export type SharedFixPayload = {
   toolType: string;
   brandModel: string;
   symptom: string;
+  testDone: string;
   fix: string;
-  worked: "yes" | "no";
+  worked: RanResult;
   appVersion: string;
   date: string;
 };
@@ -30,8 +33,9 @@ export type SharedFixInput = {
   brand?: string;
   name?: string;
   symptom: string;
+  testDone?: string;
   fix: string;
-  worked: "yes" | "no";
+  worked: RanResult;
 };
 
 /** Strip emails and phone-like numbers so a typed tip cannot leak them. */
@@ -64,6 +68,7 @@ export function buildSharedFix(input: SharedFixInput, now = new Date()): SharedF
     toolType: clip(input.toolType ?? "", 40),
     brandModel: clip(input.brandModel ?? anonymousBrandModel(input), 80),
     symptom: clip(input.symptom, 400),
+    testDone: clip(input.testDone ?? "", 400),
     fix: clip(input.fix, 400),
     worked: input.worked,
     appVersion: APP_VERSION,
@@ -79,6 +84,7 @@ export function sharedFixMailto(payload: SharedFixPayload): string {
     `toolType: ${payload.toolType}`,
     `brandModel: ${payload.brandModel}`,
     `symptom: ${payload.symptom}`,
+    `testDone: ${payload.testDone}`,
     `fix: ${payload.fix}`,
     `worked: ${payload.worked}`,
     `appVersion: ${payload.appVersion}`,

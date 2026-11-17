@@ -44,6 +44,7 @@ describe("anonymous shared fixes", () => {
       toolType: "chainsaw",
       brandModel: "STIHL MS 170",
       symptom: "Dies when tilted — email me at [redacted]",
+      testDone: "",
       fix: "Replaced the in-tank line. Call [redacted]",
       worked: "yes",
       appVersion: APP_VERSION,
@@ -84,6 +85,27 @@ describe("anonymous shared fixes", () => {
     expect(opened).not.toMatch(/device ID/i);
     const mail = sharedFixMailto(payload);
     expect(mail.startsWith(`mailto:${SHARE_INBOX}?`)).toBe(true);
+  });
+
+  it("includes the test done and a partly-ran result in the anonymous email", () => {
+    const payload = buildSharedFix(
+      {
+        toolType: "chainsaw",
+        brandModel: "STIHL MS 170",
+        symptom: "Won't start at all",
+        testDone: "Checked the spark and did the wet test",
+        fix: "New spark plug",
+        worked: "partly",
+      },
+      new Date(2026, 10, 17),
+    );
+    expect(payload.testDone).toBe("Checked the spark and did the wet test");
+    expect(payload.worked).toBe("partly");
+    const opened = decodeURIComponent(sharedFixMailto(payload));
+    expect(opened).toContain("testDone: Checked the spark and did the wet test");
+    expect(opened).toContain("worked: partly");
+    expect(opened).toContain("CrankIt shared fix:");
+    expect(opened).not.toMatch(/device ID/i);
   });
 });
 

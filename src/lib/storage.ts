@@ -10,6 +10,8 @@ export const STORAGE_KEYS = {
   tips: "crankit.mechanicTips",
   wins: "crankit.wins",
   health: "crankit.toolHealth",
+  fixOutcomes: "crankit.fixOutcomes",
+  engineNumbers: "crankit.engineNumbers",
 } as const;
 
 export type MixRatio = RatioId | "other";

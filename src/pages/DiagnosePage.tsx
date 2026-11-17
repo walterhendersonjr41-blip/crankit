@@ -9,6 +9,7 @@ import { anonymousBrandModel } from "../lib/shareFix";
 import type { GarageTool } from "../lib/storage";
 import { FixedItButton } from "../components/FixedItButton";
 import { ShareFixButton } from "../components/ShareFixButton";
+import { WhatFixedItCard } from "../components/WhatFixedItCard";
 import type { RepairWin } from "../lib/wins";
 import { loadWins } from "../lib/wins";
 import { useAppState } from "../state";
@@ -32,6 +33,7 @@ export function DiagnosePage() {
   const [logToolId, setLogToolId] = useState(tools[0]?.id ?? "");
   const [savedMsg, setSavedMsg] = useState("");
   const [lastWin, setLastWin] = useState<RepairWin | null>(null);
+  const [skipWhatFixed, setSkipWhatFixed] = useState(false);
 
   const step: DiagStep | null = tree ? tree.steps[stepIndex] ?? null : null;
   const matchingTools = useMemo(
@@ -47,6 +49,7 @@ export function DiagnosePage() {
     setDone(null);
     setSavedMsg("");
     setLastWin(null);
+    setSkipWhatFixed(false);
   }
 
   function pickTree(next: DiagTree) {
@@ -55,6 +58,7 @@ export function DiagnosePage() {
     setDone(null);
     setSavedMsg("");
     setLastWin(null);
+    setSkipWhatFixed(false);
     setStage("step");
   }
 
@@ -176,6 +180,7 @@ export function DiagnosePage() {
                 setTree(null);
                 setStepIndex(0);
                 setDone(null);
+                setSkipWhatFixed(false);
               } else if (stage === "tree") {
                 setStage("tool");
                 setToolType(null);
@@ -291,6 +296,7 @@ export function DiagnosePage() {
                 tool={currentTool()}
                 toolType={toolType ?? currentTool()?.toolType}
                 symptom={tree.title}
+                testDone={step.title}
                 fix={step.title}
                 onSaved={onFixedWin}
               />
@@ -303,6 +309,7 @@ export function DiagnosePage() {
                 tool={currentTool()}
                 toolType={toolType ?? currentTool()?.toolType}
                 symptom={tree.title}
+                testDone={step.title}
                 fix={step.title}
                 onSaved={onFixedWin}
               />
@@ -340,12 +347,26 @@ export function DiagnosePage() {
                     ? [lastWin.make, lastWin.model].filter(Boolean).join(" ")
                     : anonymousBrandModel(currentTool()),
                   symptom: lastWin?.symptom ?? tree.title,
+                  testDone: step.title,
                   fix: lastWin?.fix ?? step.title,
                   worked: "yes",
                 }}
               />
             )}
           </article>
+          {!skipWhatFixed && (
+            <WhatFixedItCard
+              tool={currentTool()}
+              toolType={toolType ?? currentTool()?.toolType}
+              make={lastWin?.make}
+              model={lastWin?.model}
+              symptom={lastWin?.symptom ?? tree.title}
+              testDone={step?.title ?? ""}
+              fix={lastWin?.fix ?? ""}
+              ran={lastWin ? "yes" : undefined}
+              onSkip={() => setSkipWhatFixed(true)}
+            />
+          )}
           <div className="grid gap-2">
             <button
               type="button"
@@ -354,6 +375,7 @@ export function DiagnosePage() {
                 setTree(null);
                 setStepIndex(0);
                 setDone(null);
+                setSkipWhatFixed(false);
               }}
               className="min-h-12 rounded-xl border border-white/20 px-4 font-bold"
             >

@@ -9,7 +9,7 @@ Nothing in this app needs a login or a server. Garage tools, fuel batches, and d
 - **Diagnose** — all 6 decision trees, every step with cost, time, a color badge, **FIXED IT! (Save to Garage Log)** and **STILL BROKEN → next check**. Tree 4 branches on the wet test and on the compression/scoring check.
 - **Carb & Tune** — interactive SVG of L / H / T-LA screws that animates direction and turn fraction for each symptom, plus a screw-head identifier (flathead, Double-D, Pac-Man, splined 21-tooth).
 - **Fuel Mix** — 50:1, 40:1, and 32:1 calculator in fl oz, mL, and tablespoons, with custom can size and a 30/90-day batch freshness tracker.
-- **My Garage** — fleet tracker with an optional sample fleet (2 chainsaws + 4 weed eaters), official model picks (including verified 4-stroke engines), and per-tool **Tool History** (Health Score, timeline, printable report).
+- **My Garage** — fleet tracker with an optional sample fleet (2 chainsaws + 4 weed eaters), official model picks (including verified 4-stroke engines), per-tool **Tool History** (Health Score, timeline, printable report), a **What fixed it** log with a per-model summary and JSON/CSV export, and an optional **Engine numbers** log (compression, WOT RPM, plug color, hours).
 - **Acoustic tuner** — on-device RPM, Miss Detector, Auto-detect engine (you tap to pick; it never auto-assigns), and a wrong-engine sanity check. Audio is never recorded or uploaded.
 - **Shop Meter** — four-question evaluator with green / amber / red banners.
 
@@ -120,7 +120,7 @@ A built-in table covers STIHL, Husqvarna, ECHO, Poulan, Craftsman, Ryobi, and Ho
 
 After Diagnose **FIXED IT**, a **That fixed it** bot rating, or a **Teach the mechanic** tip, a **Share this fix with CrankIt** button can open a prefilled email. A one-line consent note is shown and nothing is sent until the user confirms and then sends the message from their email app.
 
-The message goes to `waltinvents@agentmail.to`. The body includes only: tool type, brand/model if entered, symptom, fix, worked (yes/no), app version, and date. It does not include name, phone, garage tool nickname, IP, or device IDs. Because this uses the user’s email app, the **sender address is visible** to the reviewer. The privacy page says this plainly.
+The message goes to `waltinvents@agentmail.to`. The body includes only: tool type, brand/model if entered, symptom, test done if entered, fix, worked (yes / no / partly), app version, and date. It does not include name, phone, garage tool nickname, IP, or device IDs. Because this uses the user’s email app, the **sender address is visible** to the reviewer. The privacy page says this plainly.
 
 A short privacy page lives at `/crankit/privacy`.
 
@@ -130,7 +130,7 @@ Reviewed submissions can be copied into `src/data/learnedRules.ts` in a later re
 
 1. Open the House inbox at `waltinvents@agentmail.to`.
 2. Look for messages whose subject starts with `CrankIt shared fix:`.
-3. Read the anonymous fields in the body (tool type, brand/model, symptom, fix, worked, app version, date). The sender address will be visible; do not copy that address into the app or into `learnedRules.ts`.
+3. Read the anonymous fields in the body (tool type, brand/model, symptom, test done, fix, worked, app version, date). The sender address will be visible; do not copy that address into the app or into `learnedRules.ts`.
 4. If a fix is safe, accurate, and not just a copy of an existing tree, add a curated entry to `src/data/learnedRules.ts`, bump `APP_VERSION` in `src/config/appInfo.ts` (and the `CACHE` name in `public/sw.js` to `crankit-v` + that version), then push to `main`. Users get the new rules on their next open.
 
 
@@ -142,6 +142,12 @@ If My Garage includes a recognized model number, the tuner uses official idle an
 
 The general full-throttle band (about 11,000–12,800 RPM) is for **chainsaws** only. Trimmers, blowers, and unknown tools with no official model spec and no manual max RPM show the measured RPM but no H-screw tip, with a prompt to enter the manual’s max or pick a model. Idle ranges stay general for all 2-stroke types, and the manual’s idle wins when listed. A **2-stroke / 4-stroke** switch is available for mowers, generators, and pressure washers (4-stroke RPM = firing Hz × 120) and never gives H-screw advice — only a comparison to a governed speed if you enter one.
 
+
+## What fixed it and engine numbers
+
+After a Diagnose path ends, an optional **What fixed it?** form asks for the symptom, the test done, the fix tried, and whether the engine ran (yes / no / partly). Entries stay in `localStorage` (`crankit.fixOutcomes`), tied to the engine brand and model. **My Garage** shows a per-model summary of the most common fixes that worked, plus **Export JSON** and **Export CSV** buttons so you can keep a copy. If you also tap **Share this fix**, the prefilled email includes those same fields.
+
+An optional **Engine numbers** log stores compression PSI, wide-open-throttle RPM, plug color (tan/brown, black/sooty, white/ashy, wet/oily), engine hours, and notes, also on this device (`crankit.engineNumbers`). The app shows general hints — for example compression under ~90 PSI often means worn rings or a worn cylinder, a white/ashy plug often means lean or too hot, and a black/sooty plug often means rich, too much oil, or choke — with a disclaimer that these are general guides, not a diagnosis for that exact engine.
 
 ## My Wins (FIXED IT!)
 

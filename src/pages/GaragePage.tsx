@@ -12,6 +12,8 @@ import { deleteWin, formatMoney, totalPartCost, totalSaved, totalShopSaved, useW
 import { MODEL_SPECS, findModelSpec, officialMaxRpm } from "../data/modelSpecs";
 import { ModelSpecPicker } from "../components/ModelSpecPicker";
 import { ToolHistoryCard } from "../components/ToolHistoryCard";
+import { FixOutcomesSection } from "../components/FixOutcomesSection";
+import { EngineNumbersCard } from "../components/EngineNumbersCard";
 
 const FILE_SIZES: GarageTool["chainFileSize"][] = ["5/32\"", "3/16\"", "7/32\"", "n/a"];
 const RATIOS: MixRatio[] = ["50:1", "40:1", "32:1", "other"];
@@ -473,6 +475,10 @@ export function GaragePage() {
           </ul>
         )}
       </section>
+
+      <FixOutcomesSection />
+
+      <EngineNumbersCard tools={tools} />
 
       <section className="space-y-3 rounded-2xl border border-white/10 bg-garage-card p-4">
         <h3 className="font-black">Pro shop paperwork</h3>

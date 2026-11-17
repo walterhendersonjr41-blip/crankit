@@ -182,6 +182,46 @@ describe("CrankIt app", () => {
     window.history.pushState({}, "", "/crankit/");
   });
 
+  it("lets a user log What fixed it after a diagnosis and engine numbers in My Garage", async () => {
+    const clicks: { download: string }[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      clicks.push({ download: this.download });
+    });
+    vi.stubGlobal("URL", {
+      createObjectURL: () => "blob:crankit-export",
+      revokeObjectURL: () => undefined,
+    });
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Chainsaw" }));
+    await userEvent.click(screen.getByRole("button", { name: /Won't start at all/i }));
+    await userEvent.click(screen.getByRole("button", { name: /It fired \/ ran for 2 seconds/i }));
+    expect(screen.getByRole("heading", { name: "What fixed it?" })).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/^Engine brand$/i), "STIHL");
+    await userEvent.type(screen.getByLabelText(/^Engine model$/i), "MS 170");
+    await userEvent.clear(screen.getByLabelText(/^Fix tried$/i));
+    await userEvent.type(screen.getByLabelText(/^Fix tried$/i), "Fresh mixed gas");
+    await userEvent.click(screen.getByRole("button", { name: "Partly" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save this result" }));
+    expect(screen.getByText(/Saved to What fixed it/i)).toBeInTheDocument();
+
+    await openTab("My Garage");
+    expect(screen.getByRole("heading", { name: "What fixed it" })).toBeInTheDocument();
+    expect(screen.getByText(/Fresh mixed gas/)).toBeInTheDocument();
+    expect(screen.getByText(/Ran partly/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Export CSV" }));
+    expect(clicks.some((c) => c.download.endsWith(".csv"))).toBe(true);
+
+    expect(screen.getByRole("heading", { name: "Engine numbers" })).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/Compression \(PSI\)/i), "85");
+    await userEvent.selectOptions(screen.getByLabelText(/^Plug color$/i), "white/ashy");
+    await userEvent.click(screen.getByRole("button", { name: "Save engine numbers" }));
+    expect(screen.getByText("Saved on this device.")).toBeInTheDocument();
+    expect(screen.getAllByText(/worn rings or a worn cylinder/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/running lean or the engine is too hot/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/general guides only/i)).toBeInTheDocument();
+  });
+
   it("offers live Stripe checkout and an honor-system unlock after payment", async () => {
     render(<App />);
     await userEvent.click(screen.getByRole("button", { name: "Get Pro" }));

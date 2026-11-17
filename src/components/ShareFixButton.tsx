@@ -2,7 +2,7 @@ import { useState } from "react";
 import { buildSharedFix, submitSharedFix, type SharedFixInput } from "../lib/shareFix";
 
 export const SHARE_CONSENT =
-  "This opens a prefilled email with only an anonymous symptom, fix, tool type, and brand/model — no name or device ID. Your email app’s sender address will be visible to us.";
+  "This opens a prefilled email with only an anonymous symptom, test done, fix, whether it ran, tool type, and brand/model — no name or device ID. Your email app’s sender address will be visible to us.";
 
 export function ShareFixButton({ input, label = "Share this fix with CrankIt" }: { input: SharedFixInput; label?: string }) {
   const [phase, setPhase] = useState<"idle" | "confirm" | "sending" | "sent" | "error">("idle");
